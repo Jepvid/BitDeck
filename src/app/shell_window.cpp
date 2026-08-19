@@ -1,8 +1,10 @@
 #include "shell_window.h"
 
 #include <QComboBox>
+#include <QCoreApplication>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QProgressBar>
 #include <QPushButton>
 #include <QSplitter>
 #include <QStackedWidget>
@@ -11,8 +13,8 @@
 
 #include "finalize_dialog.h"
 #include "main_window.h"
-#include "staging_model.h"
 #include "../features/custom_sequences/custom_sequences_controller.h"
+#include "../features/make_texture_pack/make_texture_pack_controller.h"
 #include "../features/pack_mod/pack_mod_controller.h"
 
 namespace bitdeck {
@@ -59,7 +61,7 @@ private:
 
 ShellWindow::ShellWindow(MainWindow& window, QWidget* parent) : QWidget(parent), window_(window) {
     controllers_.push_back(std::make_unique<PackModController>(window_));
-    controllers_.push_back(std::make_unique<PlaceholderModeController>(QStringLiteral("Make Texture Pack"), window_));
+    controllers_.push_back(std::make_unique<MakeTexturePackController>(window_));
     controllers_.push_back(std::make_unique<CustomSequencesController>(window_));
     controllers_.push_back(std::make_unique<PlaceholderModeController>(QStringLiteral("Inspect OTR"), window_));
     controllers_.push_back(
@@ -108,12 +110,19 @@ ShellWindow::ShellWindow(MainWindow& window, QWidget* parent) : QWidget(parent),
     for (const auto& controller : controllers_) {
         statusBarStack_->addWidget(controller->statusBarWidget());
     }
-    layout->addWidget(statusBarStack_);
 
-    connect(&window_.stagingModel(), &StagingModel::changed, this, [this] {
-        finalizeButton_->setEnabled(!window_.stagingModel().entries().empty());
-    });
-    finalizeButton_->setEnabled(!window_.stagingModel().entries().empty());
+    auto* scanningStatusWidget = new QWidget();
+    auto* scanningLayout = new QHBoxLayout(scanningStatusWidget);
+    scanningLayout->setContentsMargins(8, 4, 8, 4);
+    scanningLayout->addWidget(new QLabel(tr("Scanning for new or changed files...")));
+    auto* scanningBar = new QProgressBar();
+    scanningBar->setRange(0, 0); // indeterminate -- duration is unknown up front
+    scanningBar->setMaximumWidth(150);
+    scanningLayout->addWidget(scanningBar);
+    scanningLayout->addStretch(1);
+    scanningStatusIndex_ = statusBarStack_->addWidget(scanningStatusWidget);
+
+    layout->addWidget(statusBarStack_);
 
     onModeChanged(0);
 }
@@ -133,6 +142,21 @@ void ShellWindow::onOpenClicked() {
 }
 
 void ShellWindow::onFinalizeClicked() {
+    // rescanBeforeFinalize() hashes every file in the open folder
+    // synchronously (on the GUI thread) -- for a large folder that can take
+    // a few seconds with no visual feedback otherwise, which reads as a
+    // frozen window. Swapping the status bar to a progress meter (rather
+    // than popping up a QProgressDialog) only needs a repaint of a widget
+    // already inside the visible main window, not a new top-level window
+    // waiting on the window manager to map/expose it.
+    int previousStatusIndex = statusBarStack_->currentIndex();
+    statusBarStack_->setCurrentIndex(scanningStatusIndex_);
+    QCoreApplication::processEvents();
+
+    currentController().rescanBeforeFinalize();
+
+    statusBarStack_->setCurrentIndex(previousStatusIndex);
+
     FinalizeDialog dialog(window_, this);
     dialog.exec();
 }

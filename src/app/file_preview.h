@@ -21,6 +21,11 @@ public:
 
     void showFile(const std::filesystem::path& path);
 
+signals:
+    // "< Back to folder" clicked -- the owning controller switches its
+    // content pane back to the folder/table view.
+    void closeRequested();
+
 private:
     QStackedWidget* stack_;
     QLabel* imageLabel_;

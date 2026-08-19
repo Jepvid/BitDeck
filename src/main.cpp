@@ -5,6 +5,8 @@
 
 int main(int argc, char* argv[]) {
     QApplication app(argc, argv);
+    QCoreApplication::setOrganizationName(QStringLiteral("BitDeck"));
+    QCoreApplication::setApplicationName(QStringLiteral("BitDeck"));
     bitdeck::theme::applyDarkTheme(app);
 
     bitdeck::MainWindow window;

@@ -38,6 +38,7 @@ public:
     QWidget* contentWidget() override;
     QWidget* statusBarWidget() override;
     void onOpenRequested() override;
+    void rescanBeforeFinalize() override { rescanAndStage(); }
 
 private:
     void rescanAndStage();

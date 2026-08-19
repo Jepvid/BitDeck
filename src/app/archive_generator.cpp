@@ -1,5 +1,6 @@
 #include "archive_generator.h"
 
+#include <filesystem>
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
@@ -71,6 +72,15 @@ void generateArchive(const std::map<std::string, StageEntry>& entries, const std
     int total = 0;
     for (const auto& [key, entry] : entries) {
         total += static_cast<int>(stageEntryFileCount(entry));
+    }
+
+    // Arc's constructor opens an already-existing path for read/append
+    // rather than truncating it (correct for every other caller, which only
+    // ever opens a pre-existing archive to read from) -- generation always
+    // wants a complete, fresh archive, so an old file at outputPath from a
+    // previous run is removed first rather than reused.
+    if (std::filesystem::exists(outputPath)) {
+        std::filesystem::remove(outputPath);
     }
 
     Arc arc(outputPath);

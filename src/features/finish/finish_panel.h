@@ -4,6 +4,7 @@
 
 class QListWidget;
 class QComboBox;
+class QCheckBox;
 class QPushButton;
 class QLabel;
 
@@ -30,6 +31,8 @@ private:
     MainWindow& window_;
     QListWidget* entriesList_;
     QComboBox* extensionCombo_;
+    QCheckBox* prependAltCheckbox_;
+    QCheckBox* compressCheckbox_;
     QPushButton* generateButton_;
     QLabel* statusLabel_;
 };

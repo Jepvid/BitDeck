@@ -31,7 +31,14 @@ QString statusText(FileStageStatus status) {
 
 } // namespace
 
-PackModController::PackModController(MainWindow& window) : ModeController(window) {}
+PackModController::PackModController(MainWindow& window) : ModeController(window) {
+    // A successful generate clears the shared StagingModel, but this
+    // controller's own dedup cache doesn't know that -- without this, an
+    // unchanged-since-last-stage file would look "already staged" on the
+    // next rescan and never get re-added, even though the staging model is
+    // actually empty again.
+    connect(&window_.stagingModel(), &StagingModel::generationFinished, this, [this] { stagedHashes_.clear(); });
+}
 
 QWidget* PackModController::treeWidget() {
     if (treeView_ != nullptr) {
@@ -57,6 +64,8 @@ QWidget* PackModController::contentWidget() {
     connect(contentTable_, &QTableWidget::itemSelectionChanged, this, &PackModController::onContentRowSelected);
 
     preview_ = new FilePreview();
+    connect(preview_, &FilePreview::closeRequested, this,
+            [this] { contentStack_->setCurrentWidget(contentTable_); });
 
     contentStack_ = new QStackedWidget();
     contentStack_->addWidget(contentTable_);
@@ -165,6 +174,7 @@ void PackModController::onContentRowSelected() {
 
 void PackModController::refreshContentForSelectedFolder() {
     contentStack_->setCurrentWidget(contentTable_);
+    contentTable_->setSortingEnabled(false); // avoid resorting mid-population, corrupting row indices below
     contentTable_->setRowCount(0);
 
     std::string dirKey;
@@ -192,6 +202,7 @@ void PackModController::refreshContentForSelectedFolder() {
         ++row;
     }
 
+    contentTable_->setSortingEnabled(true);
     fileCountLabel_->setText(QObject::tr("%1 file(s) in this folder").arg(row));
 }
 

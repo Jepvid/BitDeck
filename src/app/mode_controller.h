@@ -36,6 +36,13 @@ public:
     // mode is active.
     virtual void onOpenRequested() = 0;
 
+    // Called on the active mode just before Finalize Mod opens its dialog,
+    // so an iterative editing session (keep tweaking files, hit Finalize
+    // again) doesn't require manually reopening the folder/archive to pick
+    // up new or changed content first. No-op by default -- folder-backed
+    // modes override it to rerun their existing rescan-and-stage logic.
+    virtual void rescanBeforeFinalize() {}
+
 protected:
     MainWindow& window_;
 };

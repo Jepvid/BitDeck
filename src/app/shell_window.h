@@ -44,6 +44,15 @@ private:
     QStackedWidget* treeStack_;
     QStackedWidget* contentStack_;
     QStackedWidget* statusBarStack_;
+
+    // An extra statusBarStack_ page (index == controllers_.size(), appended
+    // after every mode's own page) shown in place of the active mode's
+    // status bar while Finalize Mod's pre-scan runs -- a QProgressDialog
+    // here was unreliable (a brand-new top-level window needs the window
+    // manager to map/expose it before a single processEvents() call is
+    // guaranteed to paint it); swapping a page already inside the visible
+    // main window has no such dependency.
+    int scanningStatusIndex_ = -1;
 };
 
 } // namespace bitdeck

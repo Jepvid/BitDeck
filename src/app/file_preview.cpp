@@ -1,9 +1,11 @@
 #include "file_preview.h"
 
 #include <QFile>
+#include <QHBoxLayout>
 #include <QLabel>
 #include <QPixmap>
 #include <QPlainTextEdit>
+#include <QPushButton>
 #include <QStackedWidget>
 #include <QTextStream>
 #include <QVBoxLayout>
@@ -40,8 +42,15 @@ FilePreview::FilePreview(QWidget* parent) : QWidget(parent) {
     auto* layout = new QVBoxLayout(this);
     layout->setContentsMargins(0, 0, 0, 0);
 
+    auto* backRow = new QHBoxLayout();
+    auto* backButton = new QPushButton(tr("< Back to folder"));
+    connect(backButton, &QPushButton::clicked, this, &FilePreview::closeRequested);
+    backRow->addWidget(backButton);
+    backRow->addStretch(1);
+    layout->addLayout(backRow);
+
     stack_ = new QStackedWidget();
-    layout->addWidget(stack_);
+    layout->addWidget(stack_, 1);
 
     imageLabel_ = new QLabel();
     imageLabel_->setAlignment(Qt::AlignCenter);

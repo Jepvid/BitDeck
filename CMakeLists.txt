@@ -87,6 +87,7 @@ add_library(bitdeckapp STATIC
     src/features/finish/finish_panel.cpp
     src/features/pack_mod/pack_mod_controller.cpp
     src/features/custom_sequences/custom_sequences_controller.cpp
+    src/features/make_texture_pack/make_texture_pack_controller.cpp
 )
 target_include_directories(bitdeckapp PUBLIC src ${CMAKE_BINARY_DIR}/generated)
 target_link_libraries(bitdeckapp PUBLIC Qt6::Widgets bitdeckcore bitdeckarchive)
@@ -97,10 +98,9 @@ qt_add_executable(BitDeck
     src/features/common/not_implemented_page.cpp
     src/features/debug_convert_textures/debug_convert_textures_page.cpp
 )
-# create_replace_textures_page.cpp / inspect_otr_page.cpp aren't wired into
-# the new shell yet (still reference the removed MainWindow::goBack/popTo)
-# -- each is ported to a ModeController and rejoins the build in its own
-# phase (3, 4).
+# inspect_otr_page.cpp isn't wired into the new shell yet (still references
+# the removed MainWindow::goBack/popTo) -- it's ported to a ModeController
+# and rejoins the build in Phase 4.
 
 target_link_libraries(BitDeck PRIVATE Qt6::Widgets bitdeckcore bitdeckarchive bitdeckapp)
 

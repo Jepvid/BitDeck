@@ -1,11 +1,14 @@
 #include "finish_panel.h"
 
+#include <QCheckBox>
 #include <QComboBox>
 #include <QFileDialog>
+#include <QFileInfo>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QListWidget>
 #include <QPushButton>
+#include <QSettings>
 #include <QVBoxLayout>
 
 #include "../../app/archive_generator.h"
@@ -27,6 +30,18 @@ FinishPanel::FinishPanel(MainWindow& window, QWidget* parent) : QWidget(parent),
     connect(extensionCombo_, &QComboBox::currentTextChanged, this,
             [this](const QString& ext) { window_.stagingModel().setOutputExtension(ext); });
     controlsRow->addWidget(extensionCombo_);
+
+    prependAltCheckbox_ = new QCheckBox(tr("Prepend alt/"), this);
+    prependAltCheckbox_->setChecked(window_.stagingModel().prependAlt);
+    connect(prependAltCheckbox_, &QCheckBox::toggled, this,
+            [this](bool checked) { window_.stagingModel().prependAlt = checked; });
+    controlsRow->addWidget(prependAltCheckbox_);
+
+    compressCheckbox_ = new QCheckBox(tr("Compress files"), this);
+    compressCheckbox_->setChecked(window_.stagingModel().compressFiles);
+    connect(compressCheckbox_, &QCheckBox::toggled, this,
+            [this](bool checked) { window_.stagingModel().compressFiles = checked; });
+    controlsRow->addWidget(compressCheckbox_);
 
     generateButton_ = new QPushButton(tr("Generate"), this);
     connect(generateButton_, &QPushButton::clicked, this, &FinishPanel::onGenerate);
@@ -60,8 +75,22 @@ void FinishPanel::onGenerate() {
     }
 
     QString extension = extensionCombo_->currentText();
-    QString path = QFileDialog::getSaveFileName(this, tr("Generate Archive"),
-                                                 QStringLiteral("generated.%1").arg(extension),
+
+    // Remembers the last folder and filename used to generate, across app
+    // restarts -- iterative work means regenerating the same output over
+    // and over, and re-navigating/re-typing that every time is friction the
+    // file dialog can just skip by pre-filling it.
+    QSettings settings;
+    QString lastPath = settings.value(QStringLiteral("finalize/lastOutputPath")).toString();
+    QString defaultPath;
+    if (!lastPath.isEmpty()) {
+        QFileInfo lastInfo(lastPath);
+        defaultPath = lastInfo.path() + QStringLiteral("/") + lastInfo.completeBaseName() + QStringLiteral(".") + extension;
+    } else {
+        defaultPath = QStringLiteral("generated.%1").arg(extension);
+    }
+
+    QString path = QFileDialog::getSaveFileName(this, tr("Generate Archive"), defaultPath,
                                                  QStringLiteral("*.%1").arg(extension));
     if (path.isEmpty()) {
         return;
@@ -69,6 +98,7 @@ void FinishPanel::onGenerate() {
     if (!path.endsWith(QStringLiteral(".%1").arg(extension))) {
         path += QStringLiteral(".%1").arg(extension);
     }
+    settings.setValue(QStringLiteral("finalize/lastOutputPath"), path);
 
     int total = 0;
     for (const auto& [key, entry] : stagingModel.entries()) {
