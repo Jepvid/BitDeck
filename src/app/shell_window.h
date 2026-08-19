@@ -31,7 +31,7 @@ public:
 private:
     void onModeChanged(int index);
     void onOpenClicked();
-    void onFinalizeClicked();
+    void onPrimaryActionClicked();
     ModeController& currentController();
 
     MainWindow& window_;
@@ -39,7 +39,7 @@ private:
 
     QComboBox* modeCombo_;
     QPushButton* openButton_;
-    QPushButton* finalizeButton_;
+    QPushButton* primaryActionButton_; // "Finalize Mod" by default; some modes replace both label and behavior
     QSplitter* bodySplitter_;
     QStackedWidget* treeStack_;
     QStackedWidget* contentStack_;

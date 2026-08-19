@@ -43,6 +43,17 @@ public:
     // modes override it to rerun their existing rescan-and-stage logic.
     virtual void rescanBeforeFinalize() {}
 
+    // Label and behavior for the top bar's right-side action button while
+    // this mode is active. Every staging mode uses the shared "Finalize
+    // Mod" flow (rescanBeforeFinalize() + FinalizeDialog, both handled by
+    // ShellWindow); a read-only mode with nothing to stage can replace it
+    // entirely -- return false from usesFinalizeFlow() and override both
+    // primaryActionLabel() and onPrimaryActionRequested() (e.g. Inspect
+    // OTR's "Extract OTR/O2R").
+    virtual QString primaryActionLabel() const { return QObject::tr("Finalize Mod"); }
+    virtual bool usesFinalizeFlow() const { return true; }
+    virtual void onPrimaryActionRequested() {}
+
 protected:
     MainWindow& window_;
 };

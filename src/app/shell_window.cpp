@@ -14,6 +14,7 @@
 #include "finalize_dialog.h"
 #include "main_window.h"
 #include "../features/custom_sequences/custom_sequences_controller.h"
+#include "../features/inspect_otr/inspect_otr_controller.h"
 #include "../features/make_texture_pack/make_texture_pack_controller.h"
 #include "../features/pack_mod/pack_mod_controller.h"
 
@@ -63,7 +64,7 @@ ShellWindow::ShellWindow(MainWindow& window, QWidget* parent) : QWidget(parent),
     controllers_.push_back(std::make_unique<PackModController>(window_));
     controllers_.push_back(std::make_unique<MakeTexturePackController>(window_));
     controllers_.push_back(std::make_unique<CustomSequencesController>(window_));
-    controllers_.push_back(std::make_unique<PlaceholderModeController>(QStringLiteral("Inspect OTR"), window_));
+    controllers_.push_back(std::make_unique<InspectOtrController>(window_));
     controllers_.push_back(
         std::make_unique<PlaceholderModeController>(QStringLiteral("Debug: Convert Textures"), window_));
     controllers_.push_back(
@@ -88,9 +89,9 @@ ShellWindow::ShellWindow(MainWindow& window, QWidget* parent) : QWidget(parent),
 
     topBarLayout->addStretch(1);
 
-    finalizeButton_ = new QPushButton(tr("Finalize Mod"));
-    connect(finalizeButton_, &QPushButton::clicked, this, &ShellWindow::onFinalizeClicked);
-    topBarLayout->addWidget(finalizeButton_);
+    primaryActionButton_ = new QPushButton();
+    connect(primaryActionButton_, &QPushButton::clicked, this, &ShellWindow::onPrimaryActionClicked);
+    topBarLayout->addWidget(primaryActionButton_);
 
     layout->addWidget(topBar);
 
@@ -134,6 +135,7 @@ void ShellWindow::onModeChanged(int index) {
 
     ModeController& controller = *controllers_[index];
     openButton_->setText(controller.openButtonLabel());
+    primaryActionButton_->setText(controller.primaryActionLabel());
     treeStack_->setVisible(controller.hasTreePane());
 }
 
@@ -141,7 +143,13 @@ void ShellWindow::onOpenClicked() {
     currentController().onOpenRequested();
 }
 
-void ShellWindow::onFinalizeClicked() {
+void ShellWindow::onPrimaryActionClicked() {
+    ModeController& controller = currentController();
+    if (!controller.usesFinalizeFlow()) {
+        controller.onPrimaryActionRequested();
+        return;
+    }
+
     // rescanBeforeFinalize() hashes every file in the open folder
     // synchronously (on the GUI thread) -- for a large folder that can take
     // a few seconds with no visual feedback otherwise, which reads as a
@@ -153,7 +161,7 @@ void ShellWindow::onFinalizeClicked() {
     statusBarStack_->setCurrentIndex(scanningStatusIndex_);
     QCoreApplication::processEvents();
 
-    currentController().rescanBeforeFinalize();
+    controller.rescanBeforeFinalize();
 
     statusBarStack_->setCurrentIndex(previousStatusIndex);
 
