@@ -45,7 +45,7 @@ int main(int argc, char** argv) {
     Texture texture(TextureType::RGBA32bpp, 2, 2, encodeN64Texture(source, TextureType::RGBA32bpp));
 
     {
-        Arc arc(archivePath.string());
+        bitdeck::Arc arc(archivePath.string());
         arc.addFile("textures/icons/gem", texture.build(), false);
         arc.close();
     }

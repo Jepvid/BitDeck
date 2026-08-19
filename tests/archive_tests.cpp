@@ -34,7 +34,7 @@ void testArcRoundTrip(const std::string& extension) {
     std::filesystem::remove(archivePath);
 
     {
-        Arc arc(archivePath.string());
+        bitdeck::Arc arc(archivePath.string());
         arc.addFile("textures/foo.otex", toBytes("hello world"), true);
         arc.addFile("custom/music/bar.oseq", toBytes("sequence data"), false);
         arc.close();
@@ -42,7 +42,7 @@ void testArcRoundTrip(const std::string& extension) {
 
     check(std::filesystem::exists(archivePath), (extension + ": archive file created").c_str());
 
-    Arc readBack(archivePath.string());
+    bitdeck::Arc readBack(archivePath.string());
     std::map<std::string, std::vector<uint8_t>> found;
     std::vector<std::string> names = readBack.listItems([&](const std::string& name, const std::vector<uint8_t>& data) {
         found[name] = data;

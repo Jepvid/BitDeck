@@ -118,7 +118,7 @@ int main(int argc, char** argv) {
     check(lastProcessed == 4, "generateArchive: final progress reaches the total");
     check(std::filesystem::exists(outputPath), "generateArchive: output archive file was created");
 
-    Arc readBack(outputPath.string());
+    bitdeck::Arc readBack(outputPath.string());
     std::map<std::string, std::vector<uint8_t>> found;
     readBack.listItems(
         [&](const std::string& name, const std::vector<uint8_t>& data) { found[name] = data; });

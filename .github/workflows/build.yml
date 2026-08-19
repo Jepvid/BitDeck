@@ -22,6 +22,8 @@ jobs:
           submodules: recursive
 
       - name: Install dependencies
+        env:
+          DEBIAN_FRONTEND: noninteractive
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -135,10 +137,10 @@ jobs:
           submodules: recursive
 
       - name: Install dependencies
-        run: brew install ninja qt libzip
+        run: brew install ninja qtbase libzip libpng jpeg-turbo
 
       - name: Configure
-        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$(brew --prefix qt)"
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$(brew --prefix qtbase)"
 
       - name: Build
         run: cmake --build build
@@ -150,7 +152,7 @@ jobs:
         run: |
           mkdir dist
           cp -R build/BitDeck.app dist/
-          "$(brew --prefix qt)/bin/macdeployqt" dist/BitDeck.app
+          "$(brew --prefix qtbase)/bin/macdeployqt" dist/BitDeck.app
 
       - uses: actions/upload-artifact@v4
         with:

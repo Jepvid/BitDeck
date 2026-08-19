@@ -88,12 +88,15 @@ cmake --build build
 Install Xcode Command Line Tools and Qt6 via Homebrew:
 ```bash
 xcode-select --install
-brew install cmake ninja qt libzip
+brew install cmake ninja qtbase libzip libpng jpeg-turbo
 ```
+(`qtbase` rather than the full `qt` meta-formula — it's all BitDeck's Widgets UI
+needs, and keeps unrelated modules like QtPdf/QtSvg/QtVirtualKeyboard out of
+`macdeployqt`'s way when packaging.)
 
 Homebrew's Qt is keg-only, so point CMake at it explicitly:
 ```bash
-cmake -S . -B build -G Ninja -DCMAKE_PREFIX_PATH="$(brew --prefix qt)"
+cmake -S . -B build -G Ninja -DCMAKE_PREFIX_PATH="$(brew --prefix qtbase)"
 cmake --build build
 open build/BitDeck.app
 ```
