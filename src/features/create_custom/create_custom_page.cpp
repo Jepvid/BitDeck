@@ -26,7 +26,7 @@ std::vector<uint8_t> readFileBytes(const std::filesystem::path& path) {
 } // namespace
 
 CreateCustomPage::CreateCustomPage(MainWindow& window) : window_(window) {
-    setTitle(QStringLiteral("Custom"));
+    setTitle(QStringLiteral("Pack a Mod"));
     setBackButtonVisible(true);
     connect(this, &PageFrame::backRequested, &window_, &MainWindow::goBack);
 

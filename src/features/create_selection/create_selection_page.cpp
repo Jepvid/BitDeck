@@ -48,8 +48,8 @@ QWidget* makeCreateSelectionPage(MainWindow& window) {
         {
             {QStringLiteral("T"), QObject::tr("Make Texture Pack"),
              [&window] { window.navigateTo(QStringLiteral("create_replace_textures")); }},
-            {QStringLiteral("G"), QObject::tr("Games"), [&window] { window.navigateTo(QStringLiteral("game_selection")); }},
-            {QStringLiteral("C"), QObject::tr("Custom"), [&window] { window.navigateTo(QStringLiteral("create_custom")); }},
+            {QStringLiteral("G"), QObject::tr("Game-Specific Mods"), [&window] { window.navigateTo(QStringLiteral("game_selection")); }},
+            {QStringLiteral("P"), QObject::tr("Pack a Mod"), [&window] { window.navigateTo(QStringLiteral("create_custom")); }},
         },
         window);
 }
@@ -58,7 +58,7 @@ QWidget* makeGameSelectionPage(MainWindow& window) {
     // Retro's "2Ship" card is dead/miswired in the source app. Routes to a
     // placeholder pending real 2Ship support.
     return makeMenuPage(
-        QObject::tr("Games"),
+        QObject::tr("Game-Specific Mods"),
         {
             {QStringLiteral("S"), QObject::tr("SOH"), [&window] { window.navigateTo(QStringLiteral("game_selection_soh")); }},
             {QStringLiteral("2"), QObject::tr("2Ship"), [&window] { window.navigateTo(QStringLiteral("game_selection_2ship")); }},

@@ -48,7 +48,7 @@ bool isImageFile(const std::filesystem::path& path) {
 } // namespace
 
 CreateReplaceTexturesPage::CreateReplaceTexturesPage(MainWindow& window) : window_(window) {
-    setTitle(QStringLiteral("Non-HD Textures"));
+    setTitle(QStringLiteral("Make Texture Pack"));
     setBackButtonVisible(true);
     connect(this, &PageFrame::backRequested, &window_, &MainWindow::goBack);
 
