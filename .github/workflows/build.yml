@@ -1,0 +1,205 @@
+name: Build
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-linux:
+    # Pinned glibc baseline (not ubuntu-latest).
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            cmake \
+            ninja-build \
+            qt6-base-dev \
+            qt6-base-dev-tools \
+            libgl1-mesa-dev \
+            libzip-dev \
+            adwaita-icon-theme \
+            fuse
+
+      - name: Configure
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+
+      - name: Install AppImage tooling
+        run: |
+          wget -q -O linuxdeploy https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+          wget -q -O linuxdeploy-plugin-qt https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage
+          wget -q -O appimagetool https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
+          chmod +x linuxdeploy linuxdeploy-plugin-qt appimagetool
+          sudo mv appimagetool /usr/local/bin/appimagetool
+
+      - name: Package as AppImage
+        run: |
+          # Placeholder stock icon from the installed theme.
+          ICON=$(find /usr/share/icons -iname 'application-x-executable.png' | sort -V | tail -1)
+          export QMAKE=$(which qmake6)
+          # Extract-and-run mode for linuxdeploy and its appimagetool sub-process.
+          export APPIMAGE_EXTRACT_AND_RUN=1
+          ./linuxdeploy --appimage-extract-and-run \
+            --appdir AppDir \
+            --executable build/BitDeck \
+            --desktop-file packaging/linux/bitdeck.desktop \
+            --icon-file "$ICON" \
+            --icon-filename bitdeck \
+            --plugin qt
+          ./linuxdeploy --appimage-extract-and-run --appdir AppDir --output appimage
+          mkdir -p dist
+          mv BitDeck*.AppImage dist/BitDeck-x86_64.AppImage
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BitDeck-linux
+          path: dist/
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: "6.7.*"
+
+      # Sets up the MSVC environment (INCLUDE/LIB/PATH) for the Ninja generator.
+      - name: Set up MSVC environment
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Cache vcpkg
+        uses: actions/cache@v4
+        with:
+          path: vcpkg
+          key: vcpkg-windows-libzip
+
+      - name: Install libzip via vcpkg
+        run: |
+          if (-not (Test-Path vcpkg)) {
+            git clone https://github.com/microsoft/vcpkg
+            .\vcpkg\bootstrap-vcpkg.bat
+          }
+          .\vcpkg\vcpkg install libzip:x64-windows
+
+      - name: Configure
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE="${{ github.workspace }}\vcpkg\scripts\buildsystems\vcpkg.cmake"
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+
+      - name: Package
+        run: |
+          mkdir dist
+          copy build\BitDeck.exe dist\
+          windeployqt dist\BitDeck.exe
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BitDeck-windows
+          path: dist/
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install dependencies
+        run: brew install ninja qt libzip
+
+      - name: Configure
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$(brew --prefix qt)"
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+
+      - name: Package
+        run: |
+          mkdir dist
+          cp -R build/BitDeck.app dist/
+          "$(brew --prefix qt)/bin/macdeployqt" dist/BitDeck.app
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BitDeck-macos
+          path: dist/
+
+  update-nightly-links:
+    if: github.event_name == 'pull_request'
+    needs: [build-linux, build-windows, build-macos]
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Post/update nightly build links on the PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const runId = context.runId;
+            const prNumber = context.issue.number;
+            const headSha = context.payload.pull_request.head.sha.substring(0, 7);
+
+            const artifacts = [
+              ["Linux", "BitDeck-linux"],
+              ["Windows", "BitDeck-windows"],
+              ["macOS", "BitDeck-macos"],
+            ];
+            const links = artifacts
+              .map(([label, name]) => `- [${label}](https://nightly.link/${owner}/${repo}/actions/runs/${runId}/${name}.zip)`)
+              .join("\n");
+
+            const startMarker = "<!-- nightly-build-links:start -->";
+            const endMarker = "<!-- nightly-build-links:end -->";
+            const section = [
+              startMarker,
+              "### Nightly build downloads",
+              links,
+              "",
+              `Built from commit ${headSha}.`,
+              endMarker,
+            ].join("\n");
+
+            const { data: pr } = await github.rest.pulls.get({ owner, repo, pull_number: prNumber });
+            const body = pr.body || "";
+            const startIdx = body.indexOf(startMarker);
+            const endIdx = body.indexOf(endMarker);
+
+            const newBody =
+              startIdx !== -1 && endIdx !== -1
+                ? body.slice(0, startIdx) + section + body.slice(endIdx + endMarker.length)
+                : `${body}\n\n${section}`;
+
+            await github.rest.pulls.update({ owner, repo, pull_number: prNumber, body: newBody });

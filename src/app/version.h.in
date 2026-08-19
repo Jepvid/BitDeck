@@ -1,0 +1,10 @@
+#pragma once
+
+namespace bitdeck {
+
+inline constexpr const char* kVersionName = "@BITDECK_VERSION@";
+inline constexpr const char* kGitBranch = "@BITDECK_GIT_BRANCH@";
+inline constexpr const char* kGitCommitHash = "@BITDECK_GIT_COMMIT@";
+inline constexpr const char* kGitCommitDate = "@BITDECK_GIT_DATE@";
+
+} // namespace bitdeck

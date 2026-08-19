@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=BitDeck
+Comment=A modding tool for packaging mods for HarbourMasters games
+Exec=BitDeck
+Icon=bitdeck
+Categories=Utility;
+Terminal=false
