@@ -18,6 +18,8 @@ add_library(bitdeckcore STATIC
     src/core/types/background.cpp
     src/core/types/sequence.cpp
     src/core/types/texture.cpp
+    src/core/crc64.cpp
+    src/core/gfx_tlut_scan.cpp
     src/core/image_codec.cpp
     src/core/texture_conversion.cpp
     src/games/bk64_conventions.cpp
@@ -110,6 +112,10 @@ add_test(NAME image_codec_tests COMMAND image_codec_tests)
 add_executable(texture_conversion_tests tests/texture_conversion_tests.cpp)
 target_link_libraries(texture_conversion_tests PRIVATE bitdeckcore JPEG::JPEG)
 add_test(NAME texture_conversion_tests COMMAND texture_conversion_tests)
+
+add_executable(gfx_tlut_scan_tests tests/gfx_tlut_scan_tests.cpp)
+target_link_libraries(gfx_tlut_scan_tests PRIVATE bitdeckcore)
+add_test(NAME gfx_tlut_scan_tests COMMAND gfx_tlut_scan_tests)
 
 add_executable(bitdeckarchive_tests tests/archive_tests.cpp)
 target_link_libraries(bitdeckarchive_tests PRIVATE bitdeckarchive)

@@ -146,6 +146,10 @@ QWidget* CreateReplaceTexturesPage::buildOtrStep() {
     otrResultsList_ = new QListWidget();
     layout->addWidget(otrResultsList_, 1);
 
+    applyTlutCheckbox_ = new QCheckBox(tr("Apply TLUT to applicable images"));
+    applyTlutCheckbox_->setChecked(true);
+    layout->addWidget(applyTlutCheckbox_);
+
     otrProcessButton_ = new QPushButton(tr("Process"));
     otrProcessButton_->setEnabled(false);
     connect(otrProcessButton_, &QPushButton::clicked, this, &CreateReplaceTexturesPage::onProcessOtr);
@@ -283,8 +287,11 @@ void CreateReplaceTexturesPage::onProcessOtr() {
     otrProcessButton_->setText(tr("Processing..."));
 
     auto archivePaths = selectedOtrPaths_;
+    bool applyTlut = applyTlutCheckbox_->isChecked();
     runInBackground(
-        [archivePaths, targetDir](TaskProgress& progress) { extractTexturesToFolder(archivePaths, targetDir, progress); },
+        [archivePaths, targetDir, applyTlut](TaskProgress& progress) {
+            extractTexturesToFolder(archivePaths, targetDir, progress, applyTlut);
+        },
         nullptr,
         [this, targetDir] {
             otrProcessButton_->setText(tr("Extracted to %1").arg(QString::fromStdString(targetDir.string())));

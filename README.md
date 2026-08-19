@@ -137,6 +137,7 @@ runnable demonstration of what each piece actually does.
 | `bitdeckcore_tests` | OTR resource header, Texture/Background/Sequence binary formats, SHA-256, BK64 conventions |
 | `image_codec_tests` | PNG (RGBA + palette) and JPEG decode/encode round-trips |
 | `texture_conversion_tests` | HD texture scaling/tiling pipeline (`exactMultiple`/`padCanvas`, additive font glyphs, palette rejection) |
+| `gfx_tlut_scan_tests` | CI4/CI8-to-TLUT pairing recovered from display lists' Gfx command stream, and CRC64 against known Shipwright vectors |
 | `bitdeckarchive_tests` | `.otr`/`.o2r` archive read/write, zip-slip extraction safety |
 | `app_worker_tests` | Background worker threading helper (progress/error/finished signals) |
 | `archive_generator_tests` | Full archive generation from staged entries, including HD texture resizing end-to-end |

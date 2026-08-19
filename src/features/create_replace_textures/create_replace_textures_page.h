@@ -67,6 +67,7 @@ private:
 
     QLabel* otrPathLabel_;
     QListWidget* otrResultsList_;
+    QCheckBox* applyTlutCheckbox_;
     QPushButton* otrProcessButton_;
 };
 

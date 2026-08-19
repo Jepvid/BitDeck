@@ -123,6 +123,44 @@ std::vector<std::string> Arc::listZipFiles(const ArchiveFileVisitor& onFile) {
     return files;
 }
 
+std::optional<std::vector<uint8_t>> Arc::readFile(const std::string& path) {
+    return mode_ == ArcMode::Otr ? readMpqFile(path) : readZipFile(path);
+}
+
+std::optional<std::vector<uint8_t>> Arc::readMpqFile(const std::string& path) {
+    HANDLE hFile = nullptr;
+    if (!SFileOpenFileEx(mpqHandle_, path.c_str(), 0, &hFile)) {
+        return std::nullopt;
+    }
+    DWORD size = SFileGetFileSize(hFile, nullptr);
+    std::vector<uint8_t> data(size);
+    DWORD bytesRead = 0;
+    bool readOk = SFileReadFile(hFile, data.data(), size, &bytesRead, nullptr);
+    SFileCloseFile(hFile);
+    if (!readOk) {
+        return std::nullopt;
+    }
+    return data;
+}
+
+std::optional<std::vector<uint8_t>> Arc::readZipFile(const std::string& path) {
+    zip_stat_t stat;
+    if (zip_stat(zipHandle_, path.c_str(), 0, &stat) != 0) {
+        return std::nullopt;
+    }
+    zip_file_t* zf = zip_fopen(zipHandle_, path.c_str(), 0);
+    if (zf == nullptr) {
+        return std::nullopt;
+    }
+    std::vector<uint8_t> data(stat.size);
+    zip_int64_t readBytes = zip_fread(zf, data.data(), stat.size);
+    zip_fclose(zf);
+    if (readBytes < 0 || static_cast<zip_uint64_t>(readBytes) != stat.size) {
+        return std::nullopt;
+    }
+    return data;
+}
+
 void Arc::addFile(const std::string& path, const std::vector<uint8_t>& data, bool compress) {
     if (mode_ == ArcMode::Otr) {
         addMpqFile(path, data, compress);

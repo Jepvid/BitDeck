@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <deque>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -37,11 +38,17 @@ public:
 
     void addFile(const std::string& path, const std::vector<uint8_t>& data, bool compress = false);
 
+    // Reads a single named entry without listing the whole archive. Returns
+    // nullopt if the entry doesn't exist or can't be read.
+    std::optional<std::vector<uint8_t>> readFile(const std::string& path);
+
     void close();
 
 private:
     std::vector<std::string> listMpqFiles(const ArchiveFileVisitor& onFile);
     std::vector<std::string> listZipFiles(const ArchiveFileVisitor& onFile);
+    std::optional<std::vector<uint8_t>> readMpqFile(const std::string& path);
+    std::optional<std::vector<uint8_t>> readZipFile(const std::string& path);
     void addMpqFile(const std::string& path, const std::vector<uint8_t>& data, bool compress);
     void addZipFile(const std::string& path, const std::vector<uint8_t>& data, bool compress);
     void closeMpq();
