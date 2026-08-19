@@ -3,7 +3,9 @@
 A modding tool for packaging mods for HarbourMasters games. Successor to
 [Retro](https://github.com/HarbourMasters/Retro), rewritten in C++ / Qt6.
 
-Status: early scaffolding, not yet functional.
+Status: early scaffolding, functions arent fully tested.
+
+TODO: UI Revamp, Future?, SOH-Audiotool Functions
 
 ## Nightly builds
 
