@@ -32,6 +32,8 @@ jobs:
             qt6-base-dev-tools \
             libgl1-mesa-dev \
             libzip-dev \
+            libpng-dev \
+            libjpeg-turbo8-dev \
             adwaita-icon-theme \
             fuse
 
@@ -95,15 +97,15 @@ jobs:
         uses: actions/cache@v4
         with:
           path: vcpkg
-          key: vcpkg-windows-libzip
+          key: vcpkg-windows-libzip-libpng-libjpeg-turbo
 
-      - name: Install libzip via vcpkg
+      - name: Install dependencies via vcpkg
         run: |
           if (-not (Test-Path vcpkg)) {
             git clone https://github.com/microsoft/vcpkg
             .\vcpkg\bootstrap-vcpkg.bat
           }
-          .\vcpkg\vcpkg install libzip:x64-windows
+          .\vcpkg\vcpkg install libzip:x64-windows libpng:x64-windows libjpeg-turbo:x64-windows
 
       - name: Configure
         run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE="${{ github.workspace }}\vcpkg\scripts\buildsystems\vcpkg.cmake"

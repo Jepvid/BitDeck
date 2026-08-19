@@ -82,6 +82,7 @@ target_include_directories(bitdeckapp PUBLIC src ${CMAKE_BINARY_DIR}/generated)
 target_link_libraries(bitdeckapp PUBLIC Qt6::Widgets bitdeckcore bitdeckarchive)
 
 qt_add_executable(BitDeck
+    WIN32 MACOSX_BUNDLE
     src/main.cpp
     src/features/common/not_implemented_page.cpp
     src/features/home/home_page.cpp

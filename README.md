@@ -44,7 +44,9 @@ sudo apt install -y \
   qt6-base-dev \
   qt6-base-dev-tools \
   libgl1-mesa-dev \
-  libzip-dev
+  libzip-dev \
+  libpng-dev \
+  libjpeg-turbo8-dev
 ```
 
 **Fedora**
@@ -56,7 +58,9 @@ sudo dnf install -y \
   git \
   qt6-qtbase-devel \
   mesa-libGL-devel \
-  libzip-devel
+  libzip-devel \
+  libpng-devel \
+  libjpeg-turbo-devel
 ```
 
 **Arch**
@@ -67,7 +71,9 @@ sudo pacman -S --needed \
   ninja \
   git \
   qt6-base \
-  libzip
+  libzip \
+  libpng \
+  libjpeg-turbo
 ```
 
 Then build:
@@ -89,18 +95,18 @@ Homebrew's Qt is keg-only, so point CMake at it explicitly:
 ```bash
 cmake -S . -B build -G Ninja -DCMAKE_PREFIX_PATH="$(brew --prefix qt)"
 cmake --build build
-./build/BitDeck
+open build/BitDeck.app
 ```
 
 ### Windows
 
 1. Install [Visual Studio Build Tools](https://visualstudio.microsoft.com/downloads/) (or full Visual Studio) with the **Desktop development with C++** workload. This provides the MSVC compiler and CMake; check the **C++ CMake tools for Windows** component too, which also bundles Ninja.
 2. Install Qt6 via the [Qt Online Installer](https://www.qt.io/download-qt-installer) or [aqtinstall](https://github.com/miurahr/aqtinstall), selecting the MSVC 2022 64-bit kit.
-3. Install [vcpkg](https://vcpkg.io) and get libzip through it (no plain installer for libzip on Windows):
+3. Install [vcpkg](https://vcpkg.io) and get libzip/libpng/libjpeg-turbo through it (no plain installers for these on Windows):
 ```powershell
 git clone https://github.com/microsoft/vcpkg
 .\vcpkg\bootstrap-vcpkg.bat
-.\vcpkg\vcpkg install libzip:x64-windows
+.\vcpkg\vcpkg install libzip:x64-windows libpng:x64-windows libjpeg-turbo:x64-windows
 ```
 
 From a "Developer PowerShell for VS" prompt:
@@ -143,6 +149,10 @@ Or run a single executable directly for its full descriptive output:
 (`build\texture_conversion_tests.exe` on Windows.)
 
 ## VS Code
+
+Complete the OS-specific dependency install steps above first (compiler,
+CMake, Ninja, Qt6, libzip) — CMake Tools wraps the same `cmake`
+configure/build, it doesn't install system packages on its own.
 
 Install the **CMake Tools** extension (`ms-vscode.cmake-tools`) and the
 **C/C++** extension (`ms-vscode.cpptools`).
