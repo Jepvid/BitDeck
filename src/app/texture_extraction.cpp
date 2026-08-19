@@ -191,11 +191,9 @@ TlutIndex buildTlutIndex(const std::vector<std::string>& archivePaths) {
         arc.close();
     }
 
-    // A display list's embedded hash is always of the canonical (non-"alt/")
-    // path -- the game's resource manager checks "alt/<path>" ahead of
-    // "<path>" at load time, transparently. Mirror that here so a mod's
-    // "alt/"-namespaced resource still resolves for a hash computed from its
-    // canonical name; mod overrides win over a same-named base entry.
+    // Re-indexes every "alt/"-namespaced entry under its canonical
+    // (non-"alt/") path's hash, so a mod override resolves for hashes
+    // computed from the canonical name.
     std::vector<std::pair<uint64_t, ResourceLocation>> altOverrides;
     for (const auto& [hash, location] : index.hashToLocation) {
         if (location.name.rfind("alt/", 0) == 0) {

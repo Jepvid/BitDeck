@@ -15,10 +15,8 @@ namespace {
 
 constexpr size_t kHeaderSize = 0x40;
 
-// Gfx opcodes (top byte of w0), from libultraship/libultra/gbi.h and
-// fast/f3dex2.h (the profile actually used by compiled OOT/SoH archives --
-// cross-checked against a real archive's raw bytes, since gbi.h defines two
-// different values for these depending on microcode profile).
+// Gfx opcodes (top byte of w0), fast3dex2 microcode profile values (matches
+// compiled OOT/SoH archives).
 constexpr uint8_t kOpSetTimgOtrHash = 0x20;
 constexpr uint8_t kOpSetTimg = 0xFD; // plain SETTIMG: w1 is a raw segmented pointer, not an OTR hash
 constexpr uint8_t kOpTri1 = 0x05;
@@ -99,11 +97,7 @@ std::optional<std::string> extractAttr(std::string_view tag, std::string_view at
     return std::string(tag.substr(start, end - start));
 }
 
-// A CI texture's true palette is whichever TLUT is active by the time its
-// triangles actually draw -- not simply "whichever loaded most recently
-// before it", since a real DL commonly loads a texture's pixel data first
-// (gsDPLoadTextureBlock) and its palette second (gsDPLoadTLUT_pal256).
-// Tracks every CI/flipbook texture set since the last draw command and
+// Tracks every CI/flipbook texture set since the last draw command, then
 // resolves them all against the TLUT active at that draw.
 struct DrawBoundaryTracker {
     bool hasMostRecentTlut = false;

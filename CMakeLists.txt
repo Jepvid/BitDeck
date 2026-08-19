@@ -22,6 +22,8 @@ add_library(bitdeckcore STATIC
     src/core/gfx_tlut_scan.cpp
     src/core/image_codec.cpp
     src/core/texture_conversion.cpp
+    src/core/path_tree.cpp
+    src/core/folder_scan.cpp
     src/games/bk64_conventions.cpp
 )
 target_include_directories(bitdeckcore PUBLIC src)
@@ -65,20 +67,31 @@ else()
 endif()
 configure_file(src/app/version.h.in ${CMAKE_BINARY_DIR}/generated/bitdeck/version.h @ONLY)
 
-# App shell: theme, reusable widgets, navigation, staging model, worker helper.
+# App shell: theme, reusable widgets, shell/mode plumbing, staging model, worker helper.
 add_library(bitdeckapp STATIC
     src/app/theme.cpp
     src/app/page_frame.cpp
     src/app/option_card.cpp
     src/app/numpad.cpp
     src/app/staging_model.cpp
-    src/app/ephemeral_bar.cpp
+    src/app/mode_controller.cpp
+    src/app/shell_window.cpp
+    src/app/finalize_dialog.cpp
+    src/app/file_preview.cpp
+    src/app/archive_tree_view.cpp
     src/app/main_window.cpp
     src/app/background_worker.cpp
     src/app/archive_generator.cpp
     src/app/texture_manifest_json.cpp
     src/app/game_conventions_registry.cpp
     src/app/texture_extraction.cpp
+    src/features/finish/finish_panel.cpp
+    src/features/pack_mod/pack_mod_controller.cpp
+    src/features/custom_sequences/custom_sequences_controller.cpp
+    src/features/make_texture_pack/make_texture_pack_controller.cpp
+    src/features/inspect_otr/inspect_otr_controller.cpp
+    src/features/common/not_implemented_page.cpp
+    src/features/debug_convert_textures/debug_convert_textures_page.cpp
 )
 target_include_directories(bitdeckapp PUBLIC src ${CMAKE_BINARY_DIR}/generated)
 target_link_libraries(bitdeckapp PUBLIC Qt6::Widgets bitdeckcore bitdeckarchive)
@@ -86,16 +99,6 @@ target_link_libraries(bitdeckapp PUBLIC Qt6::Widgets bitdeckcore bitdeckarchive)
 qt_add_executable(BitDeck
     WIN32 MACOSX_BUNDLE
     src/main.cpp
-    src/features/common/not_implemented_page.cpp
-    src/features/home/home_page.cpp
-    src/features/create_selection/create_selection_page.cpp
-    src/features/create_custom/create_custom_page.cpp
-    src/features/create_custom_sequences/create_custom_sequences_page.cpp
-    src/features/create_replace_textures/create_replace_textures_page.cpp
-    src/features/inspect_otr/inspect_otr_page.cpp
-    src/features/debug_selection/debug_selection_page.cpp
-    src/features/debug_convert_textures/debug_convert_textures_page.cpp
-    src/features/finish/finish_panel.cpp
 )
 
 target_link_libraries(BitDeck PRIVATE Qt6::Widgets bitdeckcore bitdeckarchive bitdeckapp)
@@ -116,6 +119,14 @@ add_test(NAME texture_conversion_tests COMMAND texture_conversion_tests)
 add_executable(gfx_tlut_scan_tests tests/gfx_tlut_scan_tests.cpp)
 target_link_libraries(gfx_tlut_scan_tests PRIVATE bitdeckcore)
 add_test(NAME gfx_tlut_scan_tests COMMAND gfx_tlut_scan_tests)
+
+add_executable(path_tree_tests tests/path_tree_tests.cpp)
+target_link_libraries(path_tree_tests PRIVATE bitdeckcore)
+add_test(NAME path_tree_tests COMMAND path_tree_tests)
+
+add_executable(folder_scan_tests tests/folder_scan_tests.cpp)
+target_link_libraries(folder_scan_tests PRIVATE bitdeckcore)
+add_test(NAME folder_scan_tests COMMAND folder_scan_tests)
 
 add_executable(bitdeckarchive_tests tests/archive_tests.cpp)
 target_link_libraries(bitdeckarchive_tests PRIVATE bitdeckarchive)

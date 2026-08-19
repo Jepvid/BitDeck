@@ -87,6 +87,11 @@ void StagingModel::removeFile(const std::filesystem::path& file, const std::stri
     updateState();
 }
 
+void StagingModel::setOutputExtension(const QString& extension) {
+    outputExtension_ = extension;
+    emit changed();
+}
+
 void StagingModel::clear() {
     entries_.clear();
     updateState();

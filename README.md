@@ -5,7 +5,7 @@ A modding tool for packaging mods for HarbourMasters games. Successor to
 
 Status: early scaffolding, functions arent fully tested.
 
-TODO: UI Revamp, Future?, SOH-Audiotool Functions
+TODO: UI Revamp (first draft done, needs polish), Future?, SOH-Audiotool Functions
 
 ## Nightly builds
 

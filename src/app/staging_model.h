@@ -61,9 +61,10 @@ public:
     // Shared toggles, read/written by every staging screen.
     bool prependAlt = false;
     bool compressFiles = false;
-    bool keepFolderOpenAfterStaging = false;
-    bool ephemeralBarExpanded = false;
-    QString outputExtension = QStringLiteral("o2r");
+
+    // Setter emits changed().
+    QString outputExtension() const { return outputExtension_; }
+    void setOutputExtension(const QString& extension);
 
     bool isGenerating() const { return isGenerating_; }
     int totalFiles() const { return totalFiles_; }
@@ -88,6 +89,7 @@ private:
     bool isGenerating_ = false;
     int totalFiles_ = 0;
     int filesProcessed_ = 0;
+    QString outputExtension_ = QStringLiteral("o2r");
 };
 
 } // namespace bitdeck
