@@ -8,6 +8,7 @@
 #include <QHeaderView>
 #include <QItemSelectionModel>
 #include <QLabel>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QStackedWidget>
 #include <QTableWidget>
@@ -126,7 +127,17 @@ void MakeTexturePackController::onOpenRequested() {
     if (directory.isEmpty()) {
         return;
     }
-    openFolder(std::filesystem::path(directory.toStdString()));
+
+    std::filesystem::path folder(directory.toStdString());
+    if (!std::filesystem::exists(folder / "manifest.json")) {
+        QMessageBox::warning(
+            treeWidget(), QObject::tr("Missing manifest.json"),
+            QObject::tr("This folder has no manifest.json, so there's no way to know which images map to which "
+                        "archive textures. Pick a folder produced by \"Extract textures from otr/o2r\"."));
+        return;
+    }
+
+    openFolder(folder);
 }
 
 void MakeTexturePackController::openFolder(const std::filesystem::path& folder) {

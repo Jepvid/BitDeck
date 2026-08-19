@@ -13,62 +13,25 @@
 
 #include "finalize_dialog.h"
 #include "main_window.h"
+#include "../features/common/not_implemented_page.h"
 #include "../features/custom_sequences/custom_sequences_controller.h"
+#include "../features/debug_convert_textures/debug_convert_textures_page.h"
 #include "../features/inspect_otr/inspect_otr_controller.h"
 #include "../features/make_texture_pack/make_texture_pack_controller.h"
 #include "../features/pack_mod/pack_mod_controller.h"
 
 namespace bitdeck {
 
-namespace {
-
-// Stands in for a mode not yet wired into the shell. Phases 2-5 replace
-// each of these with its real ModeController one at a time.
-class PlaceholderModeController : public ModeController {
-public:
-    PlaceholderModeController(QString name, MainWindow& window) : ModeController(window), name_(std::move(name)) {}
-
-    QString name() const override { return name_; }
-
-    QWidget* treeWidget() override {
-        if (tree_ == nullptr) {
-            tree_ = new QWidget();
-        }
-        return tree_;
-    }
-    QWidget* contentWidget() override {
-        if (content_ == nullptr) {
-            content_ = new QLabel(QObject::tr("Coming soon"));
-            content_->setAlignment(Qt::AlignCenter);
-        }
-        return content_;
-    }
-    QWidget* statusBarWidget() override {
-        if (statusBar_ == nullptr) {
-            statusBar_ = new QWidget();
-        }
-        return statusBar_;
-    }
-    void onOpenRequested() override {}
-
-private:
-    QString name_;
-    QWidget* tree_ = nullptr;
-    QLabel* content_ = nullptr;
-    QWidget* statusBar_ = nullptr;
-};
-
-} // namespace
-
 ShellWindow::ShellWindow(MainWindow& window, QWidget* parent) : QWidget(parent), window_(window) {
     controllers_.push_back(std::make_unique<PackModController>(window_));
     controllers_.push_back(std::make_unique<MakeTexturePackController>(window_));
     controllers_.push_back(std::make_unique<CustomSequencesController>(window_));
     controllers_.push_back(std::make_unique<InspectOtrController>(window_));
-    controllers_.push_back(
-        std::make_unique<PlaceholderModeController>(QStringLiteral("Debug: Convert Textures"), window_));
-    controllers_.push_back(
-        std::make_unique<PlaceholderModeController>(QStringLiteral("Debug: Font Generator"), window_));
+    controllers_.push_back(makeEmbeddedPageModeController(QStringLiteral("Debug: Convert Textures"), window_,
+                                                            &makeDebugConvertTexturesPage));
+    controllers_.push_back(makeEmbeddedPageModeController(
+        QStringLiteral("Debug: Font Generator"), window_,
+        [](MainWindow& w) { return makeNotImplementedPage(w, QStringLiteral("Font Generator")); }));
 
     auto* layout = new QVBoxLayout(this);
     layout->setContentsMargins(0, 0, 0, 0);

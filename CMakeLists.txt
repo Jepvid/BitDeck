@@ -90,6 +90,8 @@ add_library(bitdeckapp STATIC
     src/features/custom_sequences/custom_sequences_controller.cpp
     src/features/make_texture_pack/make_texture_pack_controller.cpp
     src/features/inspect_otr/inspect_otr_controller.cpp
+    src/features/common/not_implemented_page.cpp
+    src/features/debug_convert_textures/debug_convert_textures_page.cpp
 )
 target_include_directories(bitdeckapp PUBLIC src ${CMAKE_BINARY_DIR}/generated)
 target_link_libraries(bitdeckapp PUBLIC Qt6::Widgets bitdeckcore bitdeckarchive)
@@ -97,8 +99,6 @@ target_link_libraries(bitdeckapp PUBLIC Qt6::Widgets bitdeckcore bitdeckarchive)
 qt_add_executable(BitDeck
     WIN32 MACOSX_BUNDLE
     src/main.cpp
-    src/features/common/not_implemented_page.cpp
-    src/features/debug_convert_textures/debug_convert_textures_page.cpp
 )
 
 target_link_libraries(BitDeck PRIVATE Qt6::Widgets bitdeckcore bitdeckarchive bitdeckapp)

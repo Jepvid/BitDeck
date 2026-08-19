@@ -12,8 +12,8 @@ namespace bitdeck {
 
 class MainWindow;
 
-// Content shown inside EphemeralBar's expanded state: the staged-entries
-// list, output-format picker, and the Generate button that actually calls
+// Content shown inside FinalizeDialog: the staged-entries list,
+// output-format picker, and the Generate button that actually calls
 // generateArchive() in the background.
 class FinishPanel : public QWidget {
     Q_OBJECT

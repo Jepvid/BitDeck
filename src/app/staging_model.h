@@ -61,7 +61,6 @@ public:
     // Shared toggles, read/written by every staging screen.
     bool prependAlt = false;
     bool compressFiles = false;
-    bool keepFolderOpenAfterStaging = false;
 
     // A setter (rather than a plain field) so every mode's status-bar
     // extension picker and the Finalize dialog's picker stay in sync via
