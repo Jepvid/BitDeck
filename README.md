@@ -45,6 +45,10 @@ sudo apt install -y \
   qt6-base-dev-tools \
   libgl1-mesa-dev \
   libzip-dev \
+  zipcmp \
+  zipmerge \
+  ziptool \
+  libbz2-dev \
   libpng-dev \
   libjpeg-turbo8-dev
 ```
@@ -59,6 +63,8 @@ sudo dnf install -y \
   qt6-qtbase-devel \
   mesa-libGL-devel \
   libzip-devel \
+  libzip-tools \
+  bzip2-devel \
   libpng-devel \
   libjpeg-turbo-devel
 ```
@@ -90,9 +96,6 @@ Install Xcode Command Line Tools and Qt6 via Homebrew:
 xcode-select --install
 brew install cmake ninja qtbase libzip libpng jpeg-turbo
 ```
-(`qtbase` rather than the full `qt` meta-formula — it's all BitDeck's Widgets UI
-needs, and keeps unrelated modules like QtPdf/QtSvg/QtVirtualKeyboard out of
-`macdeployqt`'s way when packaging.)
 
 Homebrew's Qt is keg-only, so point CMake at it explicitly:
 ```bash

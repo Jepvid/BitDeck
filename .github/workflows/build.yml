@@ -35,6 +35,10 @@ jobs:
             qt6-base-dev-tools \
             libgl1-mesa-dev \
             libzip-dev \
+            zipcmp \
+            zipmerge \
+            ziptool \
+            libbz2-dev \
             libpng-dev \
             libjpeg-turbo8-dev \
             adwaita-icon-theme \
