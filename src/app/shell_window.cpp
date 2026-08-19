@@ -12,6 +12,7 @@
 #include "finalize_dialog.h"
 #include "main_window.h"
 #include "staging_model.h"
+#include "../features/custom_sequences/custom_sequences_controller.h"
 #include "../features/pack_mod/pack_mod_controller.h"
 
 namespace bitdeck {
@@ -59,7 +60,7 @@ private:
 ShellWindow::ShellWindow(MainWindow& window, QWidget* parent) : QWidget(parent), window_(window) {
     controllers_.push_back(std::make_unique<PackModController>(window_));
     controllers_.push_back(std::make_unique<PlaceholderModeController>(QStringLiteral("Make Texture Pack"), window_));
-    controllers_.push_back(std::make_unique<PlaceholderModeController>(QStringLiteral("Custom Sequences"), window_));
+    controllers_.push_back(std::make_unique<CustomSequencesController>(window_));
     controllers_.push_back(std::make_unique<PlaceholderModeController>(QStringLiteral("Inspect OTR"), window_));
     controllers_.push_back(
         std::make_unique<PlaceholderModeController>(QStringLiteral("Debug: Convert Textures"), window_));
