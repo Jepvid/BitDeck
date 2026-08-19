@@ -16,12 +16,11 @@ namespace bitdeck {
 // targetDir/manifest.json, and returns the manifest. targetDir is deleted
 // and recreated first if it already exists.
 //
-// When applyTlut is set, CI4/CI8 textures are colored using the palette they
-// load alongside in the archive's own display lists (see gfx_tlut_scan.h) --
-// the OTR format doesn't record this pairing on the texture resource itself,
-// so it's recovered from the Gfx command stream. Textures with no
-// unambiguous pairing found are extracted as-is (their default synthetic
-// grayscale palette), same as when the toggle is off.
+// When applyTlut is set, CI4/CI8 textures are colored using the palette
+// paired with them in the archive's own display lists (see
+// gfx_tlut_scan.h). Textures with no unambiguous pairing found are
+// extracted as-is (their default synthetic grayscale palette), same as when
+// the toggle is off.
 TextureManifestMap extractTexturesToFolder(const std::vector<std::string>& archivePaths,
                                             const std::filesystem::path& targetDir, TaskProgress& progress,
                                             bool applyTlut = false);

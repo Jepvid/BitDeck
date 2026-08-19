@@ -113,13 +113,8 @@ void ShellWindow::onPrimaryActionClicked() {
         return;
     }
 
-    // rescanBeforeFinalize() hashes every file in the open folder
-    // synchronously (on the GUI thread) -- for a large folder that can take
-    // a few seconds with no visual feedback otherwise, which reads as a
-    // frozen window. Swapping the status bar to a progress meter (rather
-    // than popping up a QProgressDialog) only needs a repaint of a widget
-    // already inside the visible main window, not a new top-level window
-    // waiting on the window manager to map/expose it.
+    // Swaps the status bar to a progress meter for the duration of the
+    // synchronous rescan, then restores it.
     int previousStatusIndex = statusBarStack_->currentIndex();
     statusBarStack_->setCurrentIndex(scanningStatusIndex_);
     QCoreApplication::processEvents();

@@ -62,9 +62,7 @@ public:
     bool prependAlt = false;
     bool compressFiles = false;
 
-    // A setter (rather than a plain field) so every mode's status-bar
-    // extension picker and the Finalize dialog's picker stay in sync via
-    // changed() when any one of them is edited.
+    // Setter emits changed().
     QString outputExtension() const { return outputExtension_; }
     void setOutputExtension(const QString& extension);
 

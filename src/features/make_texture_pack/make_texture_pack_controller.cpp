@@ -58,11 +58,7 @@ QString statusText(FileStageStatus status) {
 } // namespace
 
 MakeTexturePackController::MakeTexturePackController(MainWindow& window) : ModeController(window) {
-    // A successful generate clears the shared StagingModel, but this
-    // controller's own dedup cache doesn't know that -- without this, an
-    // unchanged-since-last-stage texture would look "already staged" on
-    // the next rescan and never get re-added, even though the staging
-    // model is actually empty again.
+    // Clears the dedup cache after a successful generate.
     connect(&window_.stagingModel(), &StagingModel::generationFinished, this, [this] { stagedHashes_.clear(); });
 }
 
@@ -211,15 +207,10 @@ void MakeTexturePackController::rescanAndStage() {
                 continue; // not present in the manifest -- skip
             }
 
-            // Every matched texture is shown here regardless of status --
-            // this is a browse view, not just a staging queue. Status is
-            // purely a comparison against manifestEntry->hash, the pristine
-            // baseline recorded at extraction time (see
-            // texture_extraction.cpp) -- it reflects whether the image has
-            // actually been edited, not whether it happens to have been
-            // staged yet this session. An empty baseline means this
-            // manifest wasn't produced by our own extractor (hand-authored
-            // HD pack), so there's nothing to compare against.
+            // Status compares the current file hash against
+            // manifestEntry->hash, the pristine baseline recorded at
+            // extraction time (see texture_extraction.cpp), not against
+            // whether it's been staged this session.
             FileStageStatus status;
             if (manifestEntry->hash.empty()) {
                 status = FileStageStatus::New;

@@ -182,11 +182,8 @@ void InspectOtrController::previewArchiveEntry(const std::string& entryName) {
         return;
     }
 
-    // FilePreview reads a real filesystem path -- an archive entry isn't
-    // one, so its bytes are dumped to a reused scratch file (named after
-    // the entry so FilePreview's extension-based dispatch still works)
-    // rather than teaching FilePreview to accept raw bytes for this one
-    // caller.
+    // Dumps the entry's bytes to a reused scratch file, named after the
+    // entry, for FilePreview to load.
     std::filesystem::path scratchDir = std::filesystem::temp_directory_path() / "bitdeck_inspect_preview";
     std::filesystem::create_directories(scratchDir);
     std::filesystem::path scratchPath = scratchDir / std::filesystem::path(entryName).filename();

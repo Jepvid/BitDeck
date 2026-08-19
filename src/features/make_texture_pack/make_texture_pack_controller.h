@@ -25,25 +25,20 @@ namespace bitdeck {
 class FilePreview;
 
 // "Make Texture Pack" mode: a single folder-backed tree/content pane, same
-// auto-stage-on-open/SHA-256-dedup shape as Pack Mod --
+// auto-stage-on-open/SHA-256-dedup shape as Pack Mod.
 //  - Open Folder...: a folder of replacement images matched against
-//    manifest.json (+ optional aliases.json), auto-staged as a
-//    CustomTexturesEntry the moment they resolve. One source image can fan
-//    out to several target archive paths via aliases.json, so content rows
-//    are keyed by the resolved target rather than 1:1 with source files.
-//    Every matched texture is shown (browsing, not just a staging queue),
-//    with its status column purely reflecting whether it's been edited
-//    relative to manifest.json's own recorded hash (the pristine baseline
-//    written by "Extract textures from otr/o2r") -- not whether it's been
-//    staged yet. Only edited images get staged; an untouched one has
-//    nothing to contribute.
-//  - "Extract textures from otr/o2r" (status bar): a one-off action, not a
-//    separate view -- pick one or more .otr/.o2r files and an output
-//    folder, extractTexturesToFolder() decodes every Texture/Background
-//    resource to PNG/JPG + a fresh manifest.json (Apply TLUT optionally
-//    recovers real palette colors for CI4/CI8 textures), then that folder
-//    is opened into the same tree/content pane as if "Open Folder..." had
-//    picked it directly -- extract, then edit, then it's already staged.
+//    manifest.json (+ optional aliases.json), staged as a
+//    CustomTexturesEntry. One source image can fan out to several target
+//    archive paths via aliases.json, so content rows are keyed by the
+//    resolved target rather than 1:1 with source files. Every matched
+//    texture is shown, with status comparing its current hash against
+//    manifest.json's recorded baseline hash; only edited images get staged.
+//  - "Extract textures from otr/o2r" (status bar button): picks one or more
+//    .otr/.o2r files and an output folder, runs extractTexturesToFolder()
+//    (decodes every Texture/Background resource to PNG/JPG + a fresh
+//    manifest.json, with Apply TLUT recovering real palette colors for
+//    CI4/CI8 textures), then opens that folder into the same tree/content
+//    pane as "Open Folder...".
 class MakeTexturePackController : public ModeController {
     Q_OBJECT
 

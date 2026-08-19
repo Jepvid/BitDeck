@@ -74,11 +74,8 @@ void generateArchive(const std::map<std::string, StageEntry>& entries, const std
         total += static_cast<int>(stageEntryFileCount(entry));
     }
 
-    // Arc's constructor opens an already-existing path for read/append
-    // rather than truncating it (correct for every other caller, which only
-    // ever opens a pre-existing archive to read from) -- generation always
-    // wants a complete, fresh archive, so an old file at outputPath from a
-    // previous run is removed first rather than reused.
+    // Removes any existing file at outputPath so Arc creates a fresh
+    // archive instead of opening the old one for read/append.
     if (std::filesystem::exists(outputPath)) {
         std::filesystem::remove(outputPath);
     }

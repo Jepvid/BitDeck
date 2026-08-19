@@ -61,11 +61,7 @@ QString statusText(FileStageStatus status) {
 } // namespace
 
 CustomSequencesController::CustomSequencesController(MainWindow& window) : ModeController(window) {
-    // A successful generate clears the shared StagingModel, but this
-    // controller's own dedup cache doesn't know that -- without this, an
-    // unchanged-since-last-stage sequence would look "already staged" on
-    // the next rescan and never get re-added, even though the staging
-    // model is actually empty again.
+    // Clears the dedup cache after a successful generate.
     connect(&window_.stagingModel(), &StagingModel::generationFinished, this, [this] { stagedHashes_.clear(); });
 }
 
@@ -185,8 +181,7 @@ void CustomSequencesController::onContentRowSelected() {
     if (item == nullptr) {
         return;
     }
-    // Previews the .meta sidecar rather than the (binary, unpreviewable)
-    // .seq itself -- that's the human-readable half of the pair.
+    // Previews the .meta sidecar, not the binary .seq itself.
     preview_->showFile(std::filesystem::path(item->data(kAbsolutePathRole).toString().toStdString()));
     contentStack_->setCurrentWidget(preview_);
 }

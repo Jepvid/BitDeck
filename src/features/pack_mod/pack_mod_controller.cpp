@@ -32,11 +32,7 @@ QString statusText(FileStageStatus status) {
 } // namespace
 
 PackModController::PackModController(MainWindow& window) : ModeController(window) {
-    // A successful generate clears the shared StagingModel, but this
-    // controller's own dedup cache doesn't know that -- without this, an
-    // unchanged-since-last-stage file would look "already staged" on the
-    // next rescan and never get re-added, even though the staging model is
-    // actually empty again.
+    // Clears the dedup cache after a successful generate.
     connect(&window_.stagingModel(), &StagingModel::generationFinished, this, [this] { stagedHashes_.clear(); });
 }
 
@@ -103,10 +99,8 @@ void PackModController::onOpenRequested() {
         connect(treeView_->selectionModel(), &QItemSelectionModel::currentChanged, this,
                 [this](const QModelIndex& current, const QModelIndex&) { onTreeSelectionChanged(current); });
 
-        // Only the folder name matters for browsing here -- QFileSystemModel's
-        // Size/Type/Date columns just crowd out the narrow sidebar. Column
-        // count only exists once a model is attached, so this must happen
-        // here, not in treeWidget().
+        // Hides QFileSystemModel's Size/Type/Date columns, leaving just the
+        // folder name.
         treeView_->hideColumn(1);
         treeView_->hideColumn(2);
         treeView_->hideColumn(3);

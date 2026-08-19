@@ -18,16 +18,12 @@ namespace bitdeck {
 
 class FilePreview;
 
-// "Inspect OTR" mode: read-only browsing of a single .otr/.o2r archive's
-// internal folder structure -- open a file, tree = the archive's folder
-// structure (via path_tree/archive_tree_view, since nothing gets extracted
-// to disk just to browse it), content = the selected folder's files with a
-// FilePreview for a selected entry (its bytes are written to a scratch temp
-// file first, since FilePreview reads real paths and archive entries aren't
-// on disk). Nothing here is staged, so the top bar's primary action is
-// replaced entirely with a one-shot "Extract OTR/O2R" (RetroPlus's
-// "Extract All", zip-slip-guarded via safeExtractionPath) rather than
-// Finalize Mod.
+// "Inspect OTR" mode: read-only browsing of a single .otr/.o2r archive.
+// Open a file; tree = the archive's folder structure (via
+// path_tree/archive_tree_view); content = the selected folder's files, with
+// a FilePreview for a selected entry (via a scratch temp file). The top
+// bar's primary action is "Extract OTR/O2R" (RetroPlus's "Extract All",
+// zip-slip-guarded via safeExtractionPath) in place of Finalize Mod.
 class InspectOtrController : public ModeController {
     Q_OBJECT
 

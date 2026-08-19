@@ -36,20 +36,16 @@ public:
     // mode is active.
     virtual void onOpenRequested() = 0;
 
-    // Called on the active mode just before Finalize Mod opens its dialog,
-    // so an iterative editing session (keep tweaking files, hit Finalize
-    // again) doesn't require manually reopening the folder/archive to pick
-    // up new or changed content first. No-op by default -- folder-backed
-    // modes override it to rerun their existing rescan-and-stage logic.
+    // Called on the active mode just before Finalize Mod opens its dialog.
+    // No-op by default -- folder-backed modes override it to rerun their
+    // rescan-and-stage logic.
     virtual void rescanBeforeFinalize() {}
 
-    // Label and behavior for the top bar's right-side action button while
-    // this mode is active. Every staging mode uses the shared "Finalize
-    // Mod" flow (rescanBeforeFinalize() + FinalizeDialog, both handled by
-    // ShellWindow); a read-only mode with nothing to stage can replace it
-    // entirely -- return false from usesFinalizeFlow() and override both
-    // primaryActionLabel() and onPrimaryActionRequested() (e.g. Inspect
-    // OTR's "Extract OTR/O2R").
+    // Label and behavior for the top bar's right-side action button.
+    // Default: "Finalize Mod", handled by ShellWindow via
+    // rescanBeforeFinalize() + FinalizeDialog. A mode can replace both --
+    // return false from usesFinalizeFlow() and override primaryActionLabel()
+    // and onPrimaryActionRequested() (e.g. Inspect OTR's "Extract OTR/O2R").
     virtual QString primaryActionLabel() const { return QObject::tr("Finalize Mod"); }
     virtual bool usesFinalizeFlow() const { return true; }
     virtual void onPrimaryActionRequested() {}

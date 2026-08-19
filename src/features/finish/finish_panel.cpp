@@ -76,10 +76,9 @@ void FinishPanel::onGenerate() {
 
     QString extension = extensionCombo_->currentText();
 
-    // Remembers the last folder and filename used to generate, across app
-    // restarts -- iterative work means regenerating the same output over
-    // and over, and re-navigating/re-typing that every time is friction the
-    // file dialog can just skip by pre-filling it.
+    // Pre-fills the save dialog with the last folder and filename used,
+    // persisted across app restarts, with the extension swapped to match
+    // the current picker.
     QSettings settings;
     QString lastPath = settings.value(QStringLiteral("finalize/lastOutputPath")).toString();
     QString defaultPath;
