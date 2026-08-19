@@ -24,9 +24,10 @@ jobs:
       - name: Install dependencies
         env:
           DEBIAN_FRONTEND: noninteractive
+        timeout-minutes: 10
         run: |
-          sudo apt-get update
-          sudo apt-get install -y \
+          sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=15 -o Acquire::https::Timeout=15 update
+          sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=15 -o Acquire::https::Timeout=15 install -y \
             build-essential \
             cmake \
             ninja-build \
