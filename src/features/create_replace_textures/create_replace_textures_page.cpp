@@ -26,11 +26,6 @@ namespace bitdeck {
 
 namespace {
 
-std::vector<uint8_t> readFileBytes(const std::filesystem::path& path) {
-    std::ifstream file(path, std::ios::binary);
-    return std::vector<uint8_t>(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
-}
-
 QByteArray readQByteArray(const std::filesystem::path& path) {
     QFile file(QString::fromStdString(path.string()));
     if (!file.open(QIODevice::ReadOnly)) {

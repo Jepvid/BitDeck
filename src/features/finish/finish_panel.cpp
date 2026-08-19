@@ -10,7 +10,6 @@
 
 #include "../../app/archive_generator.h"
 #include "../../app/background_worker.h"
-#include "../../app/ephemeral_bar.h"
 #include "../../app/main_window.h"
 
 namespace bitdeck {
@@ -24,9 +23,9 @@ FinishPanel::FinishPanel(MainWindow& window, QWidget* parent) : QWidget(parent),
     auto* controlsRow = new QHBoxLayout();
     extensionCombo_ = new QComboBox(this);
     extensionCombo_->addItems({QStringLiteral("o2r"), QStringLiteral("otr")});
-    extensionCombo_->setCurrentText(window_.stagingModel().outputExtension);
+    extensionCombo_->setCurrentText(window_.stagingModel().outputExtension());
     connect(extensionCombo_, &QComboBox::currentTextChanged, this,
-            [this](const QString& ext) { window_.stagingModel().outputExtension = ext; });
+            [this](const QString& ext) { window_.stagingModel().setOutputExtension(ext); });
     controlsRow->addWidget(extensionCombo_);
 
     generateButton_ = new QPushButton(tr("Generate"), this);
@@ -96,7 +95,7 @@ void FinishPanel::onGenerate() {
             statusLabel_->setText(tr("Done"));
             window_.stagingModel().finishGeneration();
             window_.stagingModel().clear();
-            window_.ephemeralBar().setExpanded(false);
+            emit archiveGenerated();
         },
         [this](QString error) {
             statusLabel_->setText(tr("Failed: %1").arg(error));

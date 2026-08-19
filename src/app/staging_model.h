@@ -62,8 +62,12 @@ public:
     bool prependAlt = false;
     bool compressFiles = false;
     bool keepFolderOpenAfterStaging = false;
-    bool ephemeralBarExpanded = false;
-    QString outputExtension = QStringLiteral("o2r");
+
+    // A setter (rather than a plain field) so every mode's status-bar
+    // extension picker and the Finalize dialog's picker stay in sync via
+    // changed() when any one of them is edited.
+    QString outputExtension() const { return outputExtension_; }
+    void setOutputExtension(const QString& extension);
 
     bool isGenerating() const { return isGenerating_; }
     int totalFiles() const { return totalFiles_; }
@@ -88,6 +92,7 @@ private:
     bool isGenerating_ = false;
     int totalFiles_ = 0;
     int filesProcessed_ = 0;
+    QString outputExtension_ = QStringLiteral("o2r");
 };
 
 } // namespace bitdeck

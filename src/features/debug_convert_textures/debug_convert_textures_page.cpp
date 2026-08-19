@@ -53,8 +53,6 @@ constexpr TextureTypeOption kTextureTypeOptions[] = {
 DebugConvertTexturesPage::DebugConvertTexturesPage(MainWindow& window) : window_(window) {
     setTitle(QStringLiteral("Convert Textures"));
     setSubtitle(tr("Experimental -- may not work"));
-    setBackButtonVisible(true);
-    connect(this, &PageFrame::backRequested, &window_, &MainWindow::goBack);
 
     auto* content = new QWidget();
     auto* mainLayout = new QHBoxLayout(content);

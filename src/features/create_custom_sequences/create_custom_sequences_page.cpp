@@ -20,11 +20,6 @@ namespace bitdeck {
 
 namespace {
 
-std::vector<uint8_t> readFileBytes(const std::filesystem::path& path) {
-    std::ifstream file(path, std::ios::binary);
-    return std::vector<uint8_t>(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
-}
-
 bool isSeqFile(const std::filesystem::path& path) {
     std::string ext = path.extension().string();
     std::transform(ext.begin(), ext.end(), ext.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });

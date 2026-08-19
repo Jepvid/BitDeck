@@ -20,6 +20,9 @@ class FinishPanel : public QWidget {
 public:
     explicit FinishPanel(MainWindow& window, QWidget* parent = nullptr);
 
+signals:
+    void archiveGenerated();
+
 private:
     void refresh();
     void onGenerate();
