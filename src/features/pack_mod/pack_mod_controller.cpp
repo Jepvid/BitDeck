@@ -10,6 +10,9 @@
 #include <QTableWidget>
 #include <QTreeView>
 
+#include <algorithm>
+#include <filesystem>
+
 #include "../../app/file_preview.h"
 #include "../../app/main_window.h"
 #include "../../core/path_utils.h"
@@ -162,7 +165,12 @@ void PackModController::onContentRowSelected() {
     if (item == nullptr) {
         return;
     }
-    preview_->showFile(std::filesystem::path(item->data(kAbsolutePathRole).toString().toStdString()));
+    std::filesystem::path path(item->data(kAbsolutePathRole).toString().toStdString());
+    if (std::filesystem::is_directory(path)) {
+        treeView_->setCurrentIndex(fsModel_->index(QString::fromStdString(path.string())));
+        return;
+    }
+    preview_->showFile(path);
     contentStack_->setCurrentWidget(preview_);
 }
 
@@ -172,10 +180,11 @@ void PackModController::refreshContentForSelectedFolder() {
     contentTable_->setRowCount(0);
 
     std::string dirKey;
+    std::filesystem::path currentAbsolute = selectedFolder_;
     QModelIndex current = treeView_->currentIndex();
     if (current.isValid()) {
-        std::filesystem::path absolute(fsModel_->filePath(current).toStdString());
-        std::filesystem::path relative = std::filesystem::relative(absolute, selectedFolder_);
+        currentAbsolute = std::filesystem::path(fsModel_->filePath(current).toStdString());
+        std::filesystem::path relative = std::filesystem::relative(currentAbsolute, selectedFolder_);
         dirKey = normalizePath(relative.string());
         if (dirKey == ".") {
             dirKey.clear();
@@ -183,6 +192,26 @@ void PackModController::refreshContentForSelectedFolder() {
     }
 
     int row = 0;
+
+    std::vector<std::filesystem::path> subfolders;
+    if (!currentAbsolute.empty() && std::filesystem::exists(currentAbsolute)) {
+        for (const auto& entry : std::filesystem::directory_iterator(currentAbsolute)) {
+            if (entry.is_directory()) {
+                subfolders.push_back(entry.path());
+            }
+        }
+    }
+    std::sort(subfolders.begin(), subfolders.end());
+    for (const auto& folder : subfolders) {
+        contentTable_->insertRow(row);
+        auto* nameItem = new QTableWidgetItem(QString::fromStdString(folder.filename().string() + "/"));
+        nameItem->setData(kAbsolutePathRole, QString::fromStdString(folder.string()));
+        contentTable_->setItem(row, 0, nameItem);
+        contentTable_->setItem(row, 1, new QTableWidgetItem());
+        ++row;
+    }
+
+    int fileCount = 0;
     for (const auto& file : lastScan_) {
         if (file.dirKey != dirKey) {
             continue;
@@ -194,10 +223,11 @@ void PackModController::refreshContentForSelectedFolder() {
         contentTable_->setItem(row, 0, nameItem);
         contentTable_->setItem(row, 1, new QTableWidgetItem(statusText(file.status)));
         ++row;
+        ++fileCount;
     }
 
     contentTable_->setSortingEnabled(true);
-    fileCountLabel_->setText(QObject::tr("%1 file(s) in this folder").arg(row));
+    fileCountLabel_->setText(QObject::tr("%1 file(s) in this folder").arg(fileCount));
 }
 
 } // namespace bitdeck

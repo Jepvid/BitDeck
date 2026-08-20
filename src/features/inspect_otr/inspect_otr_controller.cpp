@@ -6,6 +6,7 @@
 #include <QItemSelectionModel>
 #include <QLabel>
 #include <QStackedWidget>
+#include <QStandardItem>
 #include <QStandardItemModel>
 #include <QTableWidget>
 #include <QTreeView>
@@ -23,6 +24,7 @@ namespace bitdeck {
 namespace {
 
 constexpr int kEntryNameRole = Qt::UserRole + 1;
+constexpr int kFolderNameRole = Qt::UserRole + 2; // set on a folder row: that child's own name (not a full path)
 
 // Byte-for-byte dump of every archive entry, matching RetroPlus's "Extract
 // All" -- unlike texture_extraction.cpp, nothing here is decoded/converted.
@@ -150,7 +152,27 @@ void InspectOtrController::onContentRowSelected() {
     if (item == nullptr) {
         return;
     }
+
+    QVariant folderName = item->data(kFolderNameRole);
+    if (folderName.isValid()) {
+        navigateToChildFolder(folderName.toString());
+        return;
+    }
+
     previewArchiveEntry(item->data(kEntryNameRole).toString().toStdString());
+}
+
+void InspectOtrController::navigateToChildFolder(const QString& name) {
+    QModelIndex current = treeView_->currentIndex();
+    QStandardItem* parentItem = current.isValid() ? treeModel_->itemFromIndex(current) : treeModel_->invisibleRootItem();
+    for (int i = 0; i < parentItem->rowCount(); ++i) {
+        QStandardItem* child = parentItem->child(i);
+        if (child->text() == name) {
+            treeView_->expand(current);
+            treeView_->setCurrentIndex(child->index());
+            return;
+        }
+    }
 }
 
 void InspectOtrController::refreshContentForSelectedFolder() {
@@ -160,6 +182,17 @@ void InspectOtrController::refreshContentForSelectedFolder() {
 
     int row = 0;
     if (selectedNode_ != nullptr) {
+        for (const auto& [childName, childNode] : selectedNode_->children) {
+            contentTable_->insertRow(row);
+            auto* item = new QTableWidgetItem(QString::fromStdString(childName + "/"));
+            item->setData(kFolderNameRole, QString::fromStdString(childName));
+            contentTable_->setItem(row, 0, item);
+            ++row;
+        }
+    }
+
+    int fileCount = 0;
+    if (selectedNode_ != nullptr) {
         for (const auto& entryName : selectedNode_->files) {
             contentTable_->insertRow(row);
             QString baseName = QString::fromStdString(std::filesystem::path(entryName).filename().string());
@@ -167,11 +200,12 @@ void InspectOtrController::refreshContentForSelectedFolder() {
             item->setData(kEntryNameRole, QString::fromStdString(entryName));
             contentTable_->setItem(row, 0, item);
             ++row;
+            ++fileCount;
         }
     }
 
     contentTable_->setSortingEnabled(true);
-    fileCountLabel_->setText(QObject::tr("%1 file(s) in this folder").arg(row));
+    fileCountLabel_->setText(QObject::tr("%1 file(s) in this folder").arg(fileCount));
 }
 
 void InspectOtrController::previewArchiveEntry(const std::string& entryName) {

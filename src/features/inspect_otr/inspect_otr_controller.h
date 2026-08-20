@@ -43,6 +43,7 @@ public:
 private:
     void onTreeSelectionChanged(const QModelIndex& current);
     void onContentRowSelected();
+    void navigateToChildFolder(const QString& name);
     void refreshContentForSelectedFolder();
     void previewArchiveEntry(const std::string& entryName);
 
