@@ -348,7 +348,11 @@ TextureManifestMap extractTexturesToFolder(const std::vector<std::string>& archi
             if (sniffer.resourceType() == ResourceType::Texture) {
                 Texture texture;
                 texture.open(data);
-                if (texture.isValid()) {
+                if (texture.isValid() && texture.textureType() == TextureType::JPEG32bpp) {
+                    // Raw passthrough, not decoded as an N64 pixel format or
+                    // as JPEG (e.g. SM64's non-image ipl3_raw font blobs).
+                    writeFileBytes(targetDir / (fileName + ".raw"), texture.texData());
+                } else if (texture.isValid()) {
                     RgbaImage decoded =
                         decodeN64Texture(texture.texData(), texture.textureType(), texture.width(), texture.height());
                     if (applyTlut && texture.isPalette()) {
