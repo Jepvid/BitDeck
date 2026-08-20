@@ -19,6 +19,7 @@
 #include "../core/types/texture.h"
 #include "../games/mk64_tlut_map.h"
 #include "../games/mm_tlut_map.h"
+#include "../games/oot_tlut_map.h"
 #include "game_conventions_registry.h"
 #include "texture_manifest_json.h"
 
@@ -63,11 +64,13 @@ struct TlutIndex {
     // Every "*TLUT"-named resource's own filename, grouped by folder.
     std::unordered_map<std::string, std::unordered_set<std::string>> folderToTlutNames;
 
-    // True when a game-exclusive top-level folder ("models/" for MK64,
-    // "parameter_static/" for MM) was seen in archivePaths. Gates
-    // mk64_tlut_map.h/mm_tlut_map.h to their own archives.
+    // True when a game-exclusive marker path ("models/" for MK64,
+    // "parameter_static/" for MM, "objects/object_anubice/" for OOT) was
+    // seen in archivePaths. Gates mk64_tlut_map.h/mm_tlut_map.h/
+    // oot_tlut_map.h to their own archives.
     bool looksLikeMk64 = false;
     bool looksLikeMm = false;
+    bool looksLikeOot = false;
 };
 
 bool endsWith(const std::string& text, const std::string& suffix) {
@@ -244,6 +247,8 @@ TlutIndex buildTlutIndex(const std::vector<std::string>& archivePaths) {
                 index.looksLikeMk64 = true;
             } else if (fileName.rfind("parameter_static/", 0) == 0) {
                 index.looksLikeMm = true;
+            } else if (fileName.rfind("objects/object_anubice/", 0) == 0) {
+                index.looksLikeOot = true;
             }
 
             std::string baseName = std::filesystem::path(fileName).filename().string();
@@ -311,7 +316,7 @@ TlutIndex buildTlutIndex(const std::vector<std::string>& archivePaths) {
 }
 
 // Finds the TLUT hash paired with fileName: a baked ground-truth match
-// (MK64, MM), a display list that named both sides, a name-matched
+// (MK64, MM, OOT), a display list that named both sides, a name-matched
 // candidate, this folder's one confirmed TLUT, or the eye/mouth flipbook
 // segment its own name suggests. Returns nullopt if none apply.
 std::optional<uint64_t> findTlutHash(const std::string& fileName, const TlutIndex& index) {
@@ -322,6 +327,11 @@ std::optional<uint64_t> findTlutHash(const std::string& fileName, const TlutInde
     }
     if (index.looksLikeMm) {
         if (auto baked = mmTlutArchivePathFor(fileName); baked.has_value()) {
+            return crc64(*baked);
+        }
+    }
+    if (index.looksLikeOot) {
+        if (auto baked = ootTlutArchivePathFor(fileName); baked.has_value()) {
             return crc64(*baked);
         }
     }

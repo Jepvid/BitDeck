@@ -1,6 +1,7 @@
-# Regenerates src/games/mm_tlut_map.cpp from a local MM decomp checkout and
-# a real compiled mm.o2r (used to verify each candidate path actually exists).
-# Usage: python3 gen_mm_tlut_map.py <mm-decomp>/assets/xml <path-to-mm.o2r> ../src/games/mm_tlut_map.cpp
+# Regenerates a src/games/<game>_tlut_map.cpp baked TLUT-pairing table from
+# a local ZAPD-schema decomp checkout (MM, OOT) and a real compiled archive
+# (used to verify each candidate path actually exists).
+# Usage: python3 gen_zapd_tlut_map.py <game> <decomp>/assets/xml <path-to-archive.o2r> ../src/games
 import xml.etree.ElementTree as ET
 import glob, os, zipfile, sys
 
@@ -56,26 +57,30 @@ def build(xml_root, archive_path):
     return pairs, unresolved
 
 
-def emit(pairs, out_path):
-    with open(out_path, "w") as out:
-        out.write('#include "mm_tlut_map.h"\n\n')
+def emit(pairs, game, out_dir):
+    header_name = f"{game}_tlut_map.h"
+    cpp_path = os.path.join(out_dir, f"{game}_tlut_map.cpp")
+    table_name = f"k{game.capitalize()}TlutPairs"
+    func_name = f"{game}TlutArchivePathFor"
+    with open(cpp_path, "w") as out:
+        out.write(f'#include "{header_name}"\n\n')
         out.write('#include <iterator>\n')
         out.write('#include <unordered_map>\n')
         out.write('#include <utility>\n\n')
         out.write('namespace bitdeck {\n\n')
         out.write('namespace {\n\n')
         out.write('// Ground-truth CI-texture -> TLUT archive path pairs, derived from\n')
-        out.write('// the MM decomp\'s assets/xml/**/*.xml (Texture TlutOffset attributes).\n')
-        out.write('const std::pair<const char*, const char*> kMmTlutPairs[] = {\n')
+        out.write(f'// the {game.upper()} decomp\'s assets/xml/**/*.xml (Texture TlutOffset attributes).\n')
+        out.write(f'const std::pair<const char*, const char*> {table_name}[] = {{\n')
         for ci, tlut in sorted(pairs.items()):
             out.write(f'    {{"{ci}", "{tlut}"}},\n')
         out.write('};\n\n')
         out.write('} // namespace\n\n')
-        out.write('std::optional<std::string> mmTlutArchivePathFor(const std::string& archivePath) {\n')
+        out.write(f'std::optional<std::string> {func_name}(const std::string& archivePath) {{\n')
         out.write('    static const std::unordered_map<std::string, std::string> kMap = [] {\n')
         out.write('        std::unordered_map<std::string, std::string> map;\n')
-        out.write('        map.reserve(std::size(kMmTlutPairs));\n')
-        out.write('        for (const auto& [ci, tlut] : kMmTlutPairs) {\n')
+        out.write(f'        map.reserve(std::size({table_name}));\n')
+        out.write(f'        for (const auto& [ci, tlut] : {table_name}) {{\n')
         out.write('            map.emplace(ci, tlut);\n')
         out.write('        }\n')
         out.write('        return map;\n')
@@ -87,15 +92,16 @@ def emit(pairs, out_path):
         out.write('    return it->second;\n')
         out.write('}\n\n')
         out.write('} // namespace bitdeck\n')
-    print(f"wrote {len(pairs)} pairs to {out_path}")
+    print(f"wrote {len(pairs)} pairs to {cpp_path}")
 
 
 if __name__ == "__main__":
-    xml_root = sys.argv[1]
-    archive = sys.argv[2]
-    out_path = sys.argv[3]
+    game = sys.argv[1]
+    xml_root = sys.argv[2]
+    archive = sys.argv[3]
+    out_dir = sys.argv[4]
     pairs, unresolved = build(xml_root, archive)
     print(f"resolved {len(pairs)} pairs, {len(unresolved)} unresolved")
     for u in unresolved[:20]:
         print("  unresolved:", u)
-    emit(pairs, out_path)
+    emit(pairs, game, out_dir)
