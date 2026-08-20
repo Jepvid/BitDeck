@@ -13,19 +13,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(PNG REQUIRED)
 find_package(JPEG REQUIRED)
 
-add_library(bitdeckcore STATIC
-    src/core/resource.cpp
-    src/core/types/background.cpp
-    src/core/types/sequence.cpp
-    src/core/types/texture.cpp
-    src/core/crc64.cpp
-    src/core/gfx_tlut_scan.cpp
-    src/core/image_codec.cpp
-    src/core/texture_conversion.cpp
-    src/core/path_tree.cpp
-    src/core/folder_scan.cpp
-    src/games/bk64_conventions.cpp
+file(GLOB_RECURSE BITDECKCORE_SOURCES CONFIGURE_DEPENDS
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/core/*.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/games/*.cpp
 )
+add_library(bitdeckcore STATIC ${BITDECKCORE_SOURCES})
 target_include_directories(bitdeckcore PUBLIC src)
 target_link_libraries(bitdeckcore PUBLIC PNG::PNG JPEG::JPEG)
 
@@ -35,10 +27,8 @@ set(STORM_SKIP_INSTALL ON CACHE BOOL "" FORCE)
 add_subdirectory(third_party/StormLib)
 find_package(libzip CONFIG REQUIRED)
 
-add_library(bitdeckarchive STATIC
-    src/archive/arc.cpp
-    src/archive/extraction_safety.cpp
-)
+file(GLOB_RECURSE BITDECKARCHIVE_SOURCES CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/archive/*.cpp)
+add_library(bitdeckarchive STATIC ${BITDECKARCHIVE_SOURCES})
 target_include_directories(bitdeckarchive PUBLIC src)
 target_include_directories(bitdeckarchive PRIVATE third_party/StormLib/src)
 target_link_libraries(bitdeckarchive PUBLIC bitdeckcore storm libzip::zip)
@@ -68,31 +58,11 @@ endif()
 configure_file(src/app/version.h.in ${CMAKE_BINARY_DIR}/generated/bitdeck/version.h @ONLY)
 
 # App shell: theme, reusable widgets, shell/mode plumbing, staging model, worker helper.
-add_library(bitdeckapp STATIC
-    src/app/theme.cpp
-    src/app/page_frame.cpp
-    src/app/option_card.cpp
-    src/app/numpad.cpp
-    src/app/staging_model.cpp
-    src/app/mode_controller.cpp
-    src/app/shell_window.cpp
-    src/app/finalize_dialog.cpp
-    src/app/file_preview.cpp
-    src/app/archive_tree_view.cpp
-    src/app/main_window.cpp
-    src/app/background_worker.cpp
-    src/app/archive_generator.cpp
-    src/app/texture_manifest_json.cpp
-    src/app/game_conventions_registry.cpp
-    src/app/texture_extraction.cpp
-    src/features/finish/finish_panel.cpp
-    src/features/pack_mod/pack_mod_controller.cpp
-    src/features/custom_sequences/custom_sequences_controller.cpp
-    src/features/make_texture_pack/make_texture_pack_controller.cpp
-    src/features/inspect_otr/inspect_otr_controller.cpp
-    src/features/common/not_implemented_page.cpp
-    src/features/debug_convert_textures/debug_convert_textures_page.cpp
+file(GLOB_RECURSE BITDECKAPP_SOURCES CONFIGURE_DEPENDS
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/app/*.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/features/*.cpp
 )
+add_library(bitdeckapp STATIC ${BITDECKAPP_SOURCES})
 target_include_directories(bitdeckapp PUBLIC src ${CMAKE_BINARY_DIR}/generated)
 target_link_libraries(bitdeckapp PUBLIC Qt6::Widgets bitdeckcore bitdeckarchive)
 

@@ -11,6 +11,7 @@
 #include <QVBoxLayout>
 #include <QWidget>
 
+#include "config_dialog.h"
 #include "finalize_dialog.h"
 #include "main_window.h"
 #include "../features/common/not_implemented_page.h"
@@ -55,6 +56,10 @@ ShellWindow::ShellWindow(MainWindow& window, QWidget* parent) : QWidget(parent),
     primaryActionButton_ = new QPushButton();
     connect(primaryActionButton_, &QPushButton::clicked, this, &ShellWindow::onPrimaryActionClicked);
     topBarLayout->addWidget(primaryActionButton_);
+
+    settingsButton_ = new QPushButton(tr("Settings"));
+    connect(settingsButton_, &QPushButton::clicked, this, &ShellWindow::onSettingsClicked);
+    topBarLayout->addWidget(settingsButton_);
 
     layout->addWidget(topBar);
 
@@ -124,6 +129,11 @@ void ShellWindow::onPrimaryActionClicked() {
     statusBarStack_->setCurrentIndex(previousStatusIndex);
 
     FinalizeDialog dialog(window_, this);
+    dialog.exec();
+}
+
+void ShellWindow::onSettingsClicked() {
+    ConfigDialog dialog(this);
     dialog.exec();
 }
 

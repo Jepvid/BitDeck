@@ -1,5 +1,6 @@
 #include <QApplication>
 
+#include "app/config_dialog.h"
 #include "app/main_window.h"
 #include "app/theme.h"
 
@@ -8,6 +9,10 @@ int main(int argc, char* argv[]) {
     QCoreApplication::setOrganizationName(QStringLiteral("BitDeck"));
     QCoreApplication::setApplicationName(QStringLiteral("BitDeck"));
     bitdeck::theme::applyDarkTheme(app);
+
+    QFont font = app.font();
+    font.setPointSize(bitdeck::loadConfiguredFontPointSize());
+    app.setFont(font);
 
     bitdeck::MainWindow window;
     window.setWindowTitle(QStringLiteral("BitDeck"));
