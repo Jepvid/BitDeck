@@ -70,6 +70,9 @@ ShellWindow::ShellWindow(MainWindow& window, QWidget* parent) : QWidget(parent),
         treeStack_->addWidget(controller->treeWidget());
         contentStack_->addWidget(controller->contentWidget());
     }
+    // Lets the splitter be dragged down to zero width on either side.
+    treeStack_->setMinimumWidth(0);
+    contentStack_->setMinimumWidth(0);
     bodySplitter_->addWidget(treeStack_);
     bodySplitter_->addWidget(contentStack_);
     bodySplitter_->setStretchFactor(1, 1);
