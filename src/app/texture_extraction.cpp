@@ -18,6 +18,7 @@
 #include "../core/types/background.h"
 #include "../core/types/texture.h"
 #include "../games/mk64_tlut_map.h"
+#include "../games/mm_tlut_map.h"
 #include "game_conventions_registry.h"
 #include "texture_manifest_json.h"
 
@@ -61,25 +62,27 @@ struct TlutIndex {
 
     // Every "*TLUT"-named resource's own filename, grouped by folder.
     std::unordered_map<std::string, std::unordered_set<std::string>> folderToTlutNames;
+
+    // True when a game-exclusive top-level folder ("models/" for MK64,
+    // "parameter_static/" for MM) was seen in archivePaths. Gates
+    // mk64_tlut_map.h/mm_tlut_map.h to their own archives.
+    bool looksLikeMk64 = false;
+    bool looksLikeMm = false;
 };
 
 bool endsWith(const std::string& text, const std::string& suffix) {
     return text.size() >= suffix.size() && text.compare(text.size() - suffix.size(), suffix.size(), suffix) == 0;
 }
 
-// Matches OOT/BK64's "<Base>TLUT"/"<name>_TLUT" (case-sensitive suffix),
-// MK64/Spaghettikart's "tlut" as its own underscore-delimited segment
-// anywhere in the name (e.g. "common_tlut_debug_font",
-// "mario_kart_000_tlut_wheel_0"), or its "<kart>_palette" shared
-// per-character palette (e.g. "mario_kart_palette").
+// Matches an uppercase "...TLUT" suffix (OOT/BK64), or a lowercase "tlut"
+// segment/suffix or "_palette" suffix (MK64). Case-sensitive: OOT's
+// auto-generated "..._TLUT_<hexaddr>" names would also match if lowercased.
 bool looksLikeTlutName(const std::string& name) {
     if (endsWith(name, "TLUT")) {
         return true;
     }
-    std::string lower = name;
-    std::transform(lower.begin(), lower.end(), lower.begin(), [](unsigned char c) { return std::tolower(c); });
-    return lower.rfind("tlut_", 0) == 0 || endsWith(lower, "_tlut") || lower.find("_tlut_") != std::string::npos ||
-           endsWith(lower, "_palette");
+    return name.rfind("tlut_", 0) == 0 || endsWith(name, "_tlut") || name.find("_tlut_") != std::string::npos ||
+           endsWith(name, "_palette");
 }
 
 // A name with a known suffix (e.g. "Tex"/"TLUT") stripped and split into its
@@ -237,6 +240,11 @@ TlutIndex buildTlutIndex(const std::vector<std::string>& archivePaths) {
         Arc arc(archivePath);
         arc.listItems([&](const std::string& fileName, const std::vector<uint8_t>& data) {
             index.hashToLocation[crc64(fileName)] = ResourceLocation{archivePath, fileName};
+            if (fileName.rfind("models/", 0) == 0) {
+                index.looksLikeMk64 = true;
+            } else if (fileName.rfind("parameter_static/", 0) == 0) {
+                index.looksLikeMm = true;
+            }
 
             std::string baseName = std::filesystem::path(fileName).filename().string();
             if (looksLikeTlutName(baseName)) {
@@ -303,12 +311,19 @@ TlutIndex buildTlutIndex(const std::vector<std::string>& archivePaths) {
 }
 
 // Finds the TLUT hash paired with fileName: a baked ground-truth match
-// (MK64), a display list that named both sides, a name-matched candidate,
-// this folder's one confirmed TLUT, or the eye/mouth flipbook segment its
-// own name suggests. Returns nullopt if none apply.
+// (MK64, MM), a display list that named both sides, a name-matched
+// candidate, this folder's one confirmed TLUT, or the eye/mouth flipbook
+// segment its own name suggests. Returns nullopt if none apply.
 std::optional<uint64_t> findTlutHash(const std::string& fileName, const TlutIndex& index) {
-    if (auto baked = mk64TlutArchivePathFor(fileName); baked.has_value()) {
-        return crc64(*baked);
+    if (index.looksLikeMk64) {
+        if (auto baked = mk64TlutArchivePathFor(fileName); baked.has_value()) {
+            return crc64(*baked);
+        }
+    }
+    if (index.looksLikeMm) {
+        if (auto baked = mmTlutArchivePathFor(fileName); baked.has_value()) {
+            return crc64(*baked);
+        }
     }
 
     auto ciIt = index.ciHashToTlutHash.find(crc64(fileName));
