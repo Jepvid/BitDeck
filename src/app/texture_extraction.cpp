@@ -63,7 +63,7 @@ struct TlutIndex {
     // matching a "<Base>Tex" texture to a "<Base>TLUT" resource by name even
     // when no display list ever loads it (some backgrounds/HUD textures are
     // drawn by direct C code, not a Gfx command stream).
-    std::unordered_map<std::string, std::vector<std::string>> folderToTlutNames;
+    std::unordered_map<std::string, std::unordered_set<std::string>> folderToTlutNames;
 };
 
 bool endsWith(const std::string& text, const std::string& suffix) {
@@ -104,12 +104,38 @@ NormalizedTextureName normalizeTextureName(std::string name, const std::string& 
 // or absent match either way is left for the caller's other fallbacks.
 std::optional<uint64_t> findNamedTlutMatch(const std::string& fileName, const TlutIndex& index) {
     std::string baseName = std::filesystem::path(fileName).filename().string();
+    std::string folder = std::filesystem::path(fileName).parent_path().string();
+
+    // BK64/Lighthouse convention: a "<name>_TLUT" sibling in the same
+    // folder. Tries the texture's full name first (e.g. "..._tex_0" /
+    // "..._tex_0_TLUT"), then with a trailing numeric segment dropped (e.g.
+    // "..._0_1" / "..._0_TLUT").
+    auto exactIt = index.folderToTlutNames.find(folder);
+    if (exactIt != index.folderToTlutNames.end()) {
+        std::vector<std::string> candidates = {baseName};
+        size_t lastUnderscore = baseName.rfind('_');
+        if (lastUnderscore != std::string::npos) {
+            std::string trailingSegment = baseName.substr(lastUnderscore + 1);
+            bool isNumeric = !trailingSegment.empty() &&
+                              std::all_of(trailingSegment.begin(), trailingSegment.end(),
+                                          [](unsigned char c) { return std::isdigit(c); });
+            if (isNumeric) {
+                candidates.push_back(baseName.substr(0, lastUnderscore));
+            }
+        }
+        for (const auto& candidate : candidates) {
+            std::string wantedTlutName = candidate + "_TLUT";
+            if (exactIt->second.count(wantedTlutName) != 0) {
+                return crc64(folder + "/" + wantedTlutName);
+            }
+        }
+    }
+
     if (!endsWith(baseName, "Tex")) {
         return std::nullopt;
     }
     NormalizedTextureName ciName = normalizeTextureName(baseName, "Tex");
 
-    std::string folder = std::filesystem::path(fileName).parent_path().string();
     std::vector<std::string> candidateFolders = {folder};
     const std::string staticSuffix = "_static";
     if (endsWith(folder, staticSuffix) && !endsWith(folder, "_pal_static")) {
@@ -154,7 +180,7 @@ TlutIndex buildTlutIndex(const std::vector<std::string>& archivePaths) {
             std::string baseName = std::filesystem::path(fileName).filename().string();
             if (endsWith(baseName, "TLUT")) {
                 std::string folder = std::filesystem::path(fileName).parent_path().string();
-                index.folderToTlutNames[folder].push_back(baseName);
+                index.folderToTlutNames[folder].insert(baseName);
             }
 
             if (data.empty()) {

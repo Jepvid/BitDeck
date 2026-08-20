@@ -355,7 +355,8 @@ void MakeTexturePackController::onExtractTexturesClicked() {
     bool applyTlut = applyTlutCheckbox_->isChecked();
 
     extractButton_->setEnabled(false);
-    fileCountLabel_->setText(QObject::tr("Extracting..."));
+    fileCountLabel_->setText(applyTlut ? QObject::tr("Extracting (Apply TLUT makes this take longer)...")
+                                        : QObject::tr("Extracting..."));
 
     runInBackground(
         [archivePaths, targetDir, applyTlut](TaskProgress& progress) {
