@@ -1,7 +1,10 @@
 # BitDeck
 
-A modding tool for packaging mods for HarbourMasters games. Successor to
-[Retro](https://github.com/HarbourMasters/Retro), rewritten in C++ / Qt6.
+A modding tool for packaging mods for HarbourMasters games. Spiritual
+successor to [Retro](https://github.com/HarbourMasters/Retro), rewritten in
+C++ / Qt6.
+
+> **Disclaimer:** This app is AI-coded (built with Claude Code).
 
 Status: early scaffolding, functions arent fully tested.
 
