@@ -103,7 +103,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: vcpkg
-          key: vcpkg-windows-libzip-libpng-libjpeg-turbo
+          key: vcpkg-windows-static-md-libzip-libpng-libjpeg-turbo
 
       - name: Install dependencies via vcpkg
         run: |
@@ -111,10 +111,10 @@ jobs:
             git clone https://github.com/microsoft/vcpkg
             .\vcpkg\bootstrap-vcpkg.bat
           }
-          .\vcpkg\vcpkg install libzip:x64-windows libpng:x64-windows libjpeg-turbo:x64-windows
+          .\vcpkg\vcpkg install libzip:x64-windows-static-md libpng:x64-windows-static-md libjpeg-turbo:x64-windows-static-md
 
       - name: Configure
-        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE="${{ github.workspace }}\vcpkg\scripts\buildsystems\vcpkg.cmake"
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE="${{ github.workspace }}\vcpkg\scripts\buildsystems\vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x64-windows-static-md
 
       - name: Build
         run: cmake --build build
@@ -141,7 +141,7 @@ jobs:
           submodules: recursive
 
       - name: Install dependencies
-        run: brew install ninja qtbase libzip libpng jpeg-turbo
+        run: brew install ninja qtbase libzip libpng jpeg-turbo dylibbundler
 
       - name: Configure
         run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$(brew --prefix qtbase)"
@@ -157,6 +157,12 @@ jobs:
           mkdir dist
           cp -R build/BitDeck.app dist/
           "$(brew --prefix qtbase)/bin/macdeployqt" dist/BitDeck.app
+          # Bundles the Homebrew dylibs macdeployqt leaves out: libzip,
+          # libpng, jpeg-turbo, and their own transitive dependencies.
+          dylibbundler -od -b \
+            -x dist/BitDeck.app/Contents/MacOS/BitDeck \
+            -d dist/BitDeck.app/Contents/libs \
+            -p @executable_path/../libs
 
       - uses: actions/upload-artifact@v4
         with:
