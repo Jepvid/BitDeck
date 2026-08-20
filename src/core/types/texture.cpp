@@ -425,14 +425,14 @@ RgbaImage decodeN64Texture(const std::vector<uint8_t>& texData, TextureType type
     }
 }
 
-void applyTlutPalette(RgbaImage& image, const RgbaImage& tlutRgba) {
+void applyTlutPalette(RgbaImage& image, const RgbaImage& tlutRgba, int baseIndex) {
     if (!image.withPalette) {
         return;
     }
     for (int y = 0; y < tlutRgba.height; ++y) {
         for (int x = 0; x < tlutRgba.width; ++x) {
-            int index = y * tlutRgba.width + x;
-            if (index >= 16 * 16) {
+            int index = baseIndex + y * tlutRgba.width + x;
+            if (index < 0 || index >= 16 * 16) {
                 continue;
             }
             image.setPaletteEntry(static_cast<uint8_t>(index),

@@ -92,9 +92,11 @@ std::vector<uint8_t> encodeN64Texture(const RgbaImage& image, TextureType type, 
 // applyTlutPalette(). Returns an empty (width=0) image for JPEG32bpp/Error.
 RgbaImage decodeN64Texture(const std::vector<uint8_t>& texData, TextureType type, int width, int height);
 
-// Overwrites a palette image's color table from a separately-decoded TLUT
-// texture's pixels (up to 16x16 = 256 entries).
-void applyTlutPalette(RgbaImage& image, const RgbaImage& tlutRgba);
+// Overwrites a palette image's color table (indices baseIndex.. up to
+// 16x16 = 256 entries) from a separately-decoded TLUT texture's pixels.
+// Callable more than once at different baseIndex values to fill a single
+// image's color table from multiple TLUT sources.
+void applyTlutPalette(RgbaImage& image, const RgbaImage& tlutRgba, int baseIndex = 0);
 
 // Returns k such that image is exactly k*width x k*height, or nullopt.
 std::optional<int> exactMultiple(const RgbaImage& image, int width, int height);
