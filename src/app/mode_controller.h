@@ -50,14 +50,21 @@ public:
     virtual bool usesFinalizeFlow() const { return true; }
     virtual void onPrimaryActionRequested() {}
 
+    // False hides the top bar's right-side action button entirely, for a
+    // mode with no use for it at all (e.g. SoH Audio Tool, which writes
+    // loose files directly and has its own Convert button).
+    virtual bool showsPrimaryAction() const { return true; }
+
 protected:
     MainWindow& window_;
 };
 
 // Wraps an existing PageFrame-returning factory (makeDebugConvertTexturesPage,
 // makeNotImplementedPage) as a tree-less, status-bar-less ModeController, for
-// screens this redesign leaves embedded as-is.
+// screens this redesign leaves embedded as-is. showPrimaryAction hides the
+// top bar's right-side action button when false.
 std::unique_ptr<ModeController> makeEmbeddedPageModeController(
-    const QString& name, MainWindow& window, std::function<QWidget*(MainWindow&)> pageFactory);
+    const QString& name, MainWindow& window, std::function<QWidget*(MainWindow&)> pageFactory,
+    bool showPrimaryAction = true);
 
 } // namespace bitdeck

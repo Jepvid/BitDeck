@@ -13,11 +13,14 @@ namespace {
 // and status-bar strip stay inert for this mode.
 class EmbeddedPageModeController : public ModeController {
 public:
-    EmbeddedPageModeController(QString name, MainWindow& window, std::function<QWidget*(MainWindow&)> pageFactory)
-        : ModeController(window), name_(std::move(name)), page_(pageFactory(window)) {}
+    EmbeddedPageModeController(QString name, MainWindow& window, std::function<QWidget*(MainWindow&)> pageFactory,
+                                bool showPrimaryAction)
+        : ModeController(window), name_(std::move(name)), page_(pageFactory(window)),
+          showPrimaryAction_(showPrimaryAction) {}
 
     QString name() const override { return name_; }
     bool hasTreePane() const override { return false; }
+    bool showsPrimaryAction() const override { return showPrimaryAction_; }
 
     QWidget* treeWidget() override {
         if (treePlaceholder_ == nullptr) {
@@ -38,6 +41,7 @@ public:
 private:
     QString name_;
     QWidget* page_;
+    bool showPrimaryAction_;
     QWidget* treePlaceholder_ = nullptr;
     QWidget* statusPlaceholder_ = nullptr;
 };
@@ -45,8 +49,9 @@ private:
 } // namespace
 
 std::unique_ptr<ModeController> makeEmbeddedPageModeController(
-    const QString& name, MainWindow& window, std::function<QWidget*(MainWindow&)> pageFactory) {
-    return std::make_unique<EmbeddedPageModeController>(name, window, std::move(pageFactory));
+    const QString& name, MainWindow& window, std::function<QWidget*(MainWindow&)> pageFactory,
+    bool showPrimaryAction) {
+    return std::make_unique<EmbeddedPageModeController>(name, window, std::move(pageFactory), showPrimaryAction);
 }
 
 } // namespace bitdeck

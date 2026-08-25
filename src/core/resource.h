@@ -51,6 +51,7 @@ protected:
     void appendData(const std::vector<uint8_t>& data);
     void writeBinary(int32_t value);
     void writeInt8(uint8_t value);
+    void writeInt16(int16_t value);
     void writeInt32(int32_t value);
     void writeInt64(int64_t value);
     void writeFloat32(float value);

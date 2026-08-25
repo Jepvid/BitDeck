@@ -20,6 +20,7 @@
 #include "../features/inspect_otr/inspect_otr_controller.h"
 #include "../features/make_texture_pack/make_texture_pack_controller.h"
 #include "../features/pack_mod/pack_mod_controller.h"
+#include "../features/soh_audiotool/audio_convert_page.h"
 
 namespace bitdeck {
 
@@ -28,6 +29,8 @@ ShellWindow::ShellWindow(MainWindow& window, QWidget* parent) : QWidget(parent),
     controllers_.push_back(std::make_unique<MakeTexturePackController>(window_));
     controllers_.push_back(std::make_unique<CustomSequencesController>(window_));
     controllers_.push_back(std::make_unique<InspectOtrController>(window_));
+    controllers_.push_back(makeEmbeddedPageModeController(QStringLiteral("SoH Audio Tool"), window_,
+                                                            &makeAudioConvertPage, /*showPrimaryAction=*/false));
     controllers_.push_back(makeEmbeddedPageModeController(QStringLiteral("Debug: Convert Textures"), window_,
                                                             &makeDebugConvertTexturesPage));
     controllers_.push_back(makeEmbeddedPageModeController(
@@ -107,6 +110,7 @@ void ShellWindow::onModeChanged(int index) {
     ModeController& controller = *controllers_[index];
     openButton_->setText(controller.openButtonLabel());
     primaryActionButton_->setText(controller.primaryActionLabel());
+    primaryActionButton_->setVisible(controller.showsPrimaryAction());
     treeStack_->setVisible(controller.hasTreePane());
 }
 

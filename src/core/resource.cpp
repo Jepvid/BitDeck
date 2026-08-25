@@ -45,6 +45,12 @@ void Resource::writeInt8(uint8_t value) {
     writeBuffer_.push_back(value);
 }
 
+void Resource::writeInt16(int16_t value) {
+    uint8_t bytes[2];
+    std::memcpy(bytes, &value, sizeof(bytes));
+    writeBuffer_.insert(writeBuffer_.end(), bytes, bytes + sizeof(bytes));
+}
+
 void Resource::writeInt32(int32_t value) {
     uint8_t bytes[4];
     std::memcpy(bytes, &value, sizeof(bytes));

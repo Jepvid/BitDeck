@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.21)
-project(BitDeck LANGUAGES CXX)
+project(BitDeck LANGUAGES C CXX)
 
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_BUILD_TYPE Debug CACHE STRING "Build type" FORCE)
@@ -13,13 +13,28 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(PNG REQUIRED)
 find_package(JPEG REQUIRED)
 
+add_library(vadpcm_codec STATIC
+    third_party/vadpcm/codec/autocorr.c
+    third_party/vadpcm/codec/binary.c
+    third_party/vadpcm/codec/codebook.c
+    third_party/vadpcm/codec/decode.c
+    third_party/vadpcm/codec/encode.c
+    third_party/vadpcm/codec/error.c
+    third_party/vadpcm/codec/predictor.c
+    third_party/vadpcm/codec/random.c
+)
+target_include_directories(vadpcm_codec PUBLIC third_party/vadpcm)
+if(NOT WIN32)
+    target_link_libraries(vadpcm_codec PRIVATE m)
+endif()
+
 file(GLOB_RECURSE BITDECKCORE_SOURCES CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/src/core/*.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/games/*.cpp
 )
 add_library(bitdeckcore STATIC ${BITDECKCORE_SOURCES})
 target_include_directories(bitdeckcore PUBLIC src)
-target_link_libraries(bitdeckcore PUBLIC PNG::PNG JPEG::JPEG)
+target_link_libraries(bitdeckcore PUBLIC PNG::PNG JPEG::JPEG vadpcm_codec)
 
 # .otr (MPQ) / .o2r (zip) archive layer.
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
@@ -85,6 +100,10 @@ add_test(NAME image_codec_tests COMMAND image_codec_tests)
 add_executable(texture_conversion_tests tests/texture_conversion_tests.cpp)
 target_link_libraries(texture_conversion_tests PRIVATE bitdeckcore JPEG::JPEG)
 add_test(NAME texture_conversion_tests COMMAND texture_conversion_tests)
+
+add_executable(audio_tests tests/audio_tests.cpp)
+target_link_libraries(audio_tests PRIVATE bitdeckcore)
+add_test(NAME audio_tests COMMAND audio_tests)
 
 add_executable(gfx_tlut_scan_tests tests/gfx_tlut_scan_tests.cpp)
 target_link_libraries(gfx_tlut_scan_tests PRIVATE bitdeckcore)
