@@ -1,3 +1,6 @@
 [submodule "third_party/StormLib"]
 	path = third_party/StormLib
 	url = https://github.com/ladislav-zezula/StormLib.git
+[submodule "third_party/vadpcm"]
+	path = third_party/vadpcm
+	url = https://github.com/Jameriquiah/vadpcm.git
