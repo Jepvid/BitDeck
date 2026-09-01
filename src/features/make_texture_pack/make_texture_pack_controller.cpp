@@ -111,6 +111,15 @@ QWidget* MakeTexturePackController::statusBarWidget() {
     applyTlutCheckbox_->setChecked(true);
     layout->addWidget(applyTlutCheckbox_);
 
+    previewI8AlphaCheckbox_ = new QCheckBox(QObject::tr("Apply transparency to applicable IA4/IA8 textures"));
+    previewI8AlphaCheckbox_->setChecked(true);
+    previewI8AlphaCheckbox_->setToolTip(QObject::tr(
+        "Treats dark pixels as transparent for I8 textures confirmed drawn with a translucent "
+        "render mode in-game (glow/spark/dust), so their real shape is visible when editing. "
+        "Plain opaque I8 surfaces (item textures, patterns) are left untouched -- this is "
+        "checked per-texture, not applied blindly."));
+    layout->addWidget(previewI8AlphaCheckbox_);
+
     extractButton_ = new QPushButton(QObject::tr("Extract textures from otr/o2r"));
     connect(extractButton_, &QPushButton::clicked, this, &MakeTexturePackController::onExtractTexturesClicked);
     layout->addWidget(extractButton_);
@@ -176,10 +185,9 @@ void MakeTexturePackController::rescanAndStage() {
         aliases = parseAliasesJson(readQByteArray(aliasesPath));
     }
 
-    // Opening a folder here means the user wants its resolved textures in
-    // the finalized mod -- stage every changed one immediately, same as
-    // Pack Mod, but a source image may fan out to several target archive
-    // paths via aliases.json, so staging is grouped by each target's dir.
+    // Stages every changed resolved texture immediately, grouped by each
+    // target's dir (a source image can fan out to several target archive
+    // paths via aliases.json).
     std::map<std::string, std::vector<std::pair<std::filesystem::path, TextureManifestEntry>>> toStage;
 
     for (const auto& dirEntry : std::filesystem::recursive_directory_iterator(selectedFolder_)) {
@@ -225,9 +233,9 @@ void MakeTexturePackController::rescanAndStage() {
                 continue; // matches the manifest baseline -- nothing to stage
             }
 
-            // Session-level dedup only, to avoid re-adding an unchanged
-            // edit to the staging model on a repeat scan within the same
-            // folder-open -- unrelated to the status shown above.
+            // Session-level dedup: catches an unchanged edit re-scanned
+            // within the same folder-open. Unrelated to the status shown
+            // above.
             auto knownIt = stagedHashes_.find(target);
             if (knownIt != stagedHashes_.end() && knownIt->second == hash) {
                 continue;
@@ -353,14 +361,16 @@ void MakeTexturePackController::onExtractTexturesClicked() {
     std::filesystem::path firstPath(archivePaths.front());
     std::filesystem::path targetDir = std::filesystem::path(outputDir.toStdString()) / firstPath.stem();
     bool applyTlut = applyTlutCheckbox_->isChecked();
+    bool previewI8Alpha = previewI8AlphaCheckbox_->isChecked();
 
     extractButton_->setEnabled(false);
-    fileCountLabel_->setText(applyTlut ? QObject::tr("Extracting (Apply TLUT makes this take longer)...")
-                                        : QObject::tr("Extracting..."));
+    fileCountLabel_->setText((applyTlut || previewI8Alpha)
+                                  ? QObject::tr("Extracting (Apply TLUT/I8 preview makes this take longer)...")
+                                  : QObject::tr("Extracting..."));
 
     runInBackground(
-        [archivePaths, targetDir, applyTlut](TaskProgress& progress) {
-            extractTexturesToFolder(archivePaths, targetDir, progress, applyTlut);
+        [archivePaths, targetDir, applyTlut, previewI8Alpha](TaskProgress& progress) {
+            extractTexturesToFolder(archivePaths, targetDir, progress, applyTlut, previewI8Alpha);
         },
         nullptr,
         [this, targetDir] {

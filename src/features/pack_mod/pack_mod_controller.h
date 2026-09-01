@@ -23,10 +23,9 @@ class FilePreview;
 
 // "Pack Mod" mode: open a folder, browse its subfolder tree; every file
 // found is staged into the shared StagingModel immediately (under its
-// directory-relative archive path) -- opening a folder here means you want
-// it in the finalized mod, no separate stage step. Preserves RetroPlus's
-// SHA-256 dedup: reopening the same folder later only (re-)stages files
-// whose content actually changed since the last scan.
+// directory-relative archive path), no separate stage step. Preserves
+// RetroPlus's SHA-256 dedup: reopening the same folder later only
+// (re-)stages files whose content changed since the last scan.
 class PackModController : public ModeController {
     Q_OBJECT
 

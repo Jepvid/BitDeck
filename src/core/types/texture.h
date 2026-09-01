@@ -90,7 +90,13 @@ std::vector<uint8_t> encodeN64Texture(const RgbaImage& image, TextureType type, 
 // Decodes N64 texture bytes into an RgbaImage. Palette types come back with
 // a synthetic grayscale palette (index*16 per channel) unless overridden by
 // applyTlutPalette(). Returns an empty (width=0) image for JPEG32bpp/Error.
-RgbaImage decodeN64Texture(const std::vector<uint8_t>& texData, TextureType type, int width, int height);
+//
+// previewI8AlphaFromIntensity, when set, decodes Grayscale8bpp (I8) with
+// alpha = intensity instead of real hardware's constant opaque alpha -- a
+// display convention for VFX-style textures (glow/spark/dust), applied
+// indiscriminately to plain opaque I8 surfaces too.
+RgbaImage decodeN64Texture(const std::vector<uint8_t>& texData, TextureType type, int width, int height,
+                            bool previewI8AlphaFromIntensity = false);
 
 // Overwrites a palette image's color table (indices baseIndex.. up to
 // 16x16 = 256 entries) from a separately-decoded TLUT texture's pixels.

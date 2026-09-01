@@ -21,8 +21,16 @@ namespace bitdeck {
 // gfx_tlut_scan.h). Textures with no unambiguous pairing found are
 // extracted as-is (their default synthetic grayscale palette), same as when
 // the toggle is off.
+//
+// When previewI8AlphaFromIntensity is set, I8 textures confirmed drawn with
+// a translucent render mode (see scanDisplayListForTransparencyInfo, plus
+// each game's baked *_i8_transparency_map fallback for textures only ever
+// drawn by a runtime-built Gfx array) are decoded with alpha = intensity
+// (see decodeN64Texture) instead of real hardware's constant opaque alpha.
+// An I8 texture not confirmed translucent stays real hardware-accurate
+// opaque.
 TextureManifestMap extractTexturesToFolder(const std::vector<std::string>& archivePaths,
                                             const std::filesystem::path& targetDir, TaskProgress& progress,
-                                            bool applyTlut = false);
+                                            bool applyTlut = false, bool previewI8AlphaFromIntensity = false);
 
 } // namespace bitdeck

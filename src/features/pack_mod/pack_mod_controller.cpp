@@ -121,8 +121,7 @@ void PackModController::onOpenRequested() {
 void PackModController::rescanAndStage() {
     lastScan_ = scanFolder(selectedFolder_, stagedHashes_);
 
-    // Opening a folder here means the user wants it in the finalized mod --
-    // stage every changed file immediately, no separate confirmation step.
+    // Stages every changed file immediately, no separate confirmation step.
     std::map<std::string, std::vector<std::filesystem::path>> filesByDir;
     for (const auto& file : lastScan_) {
         if (file.status == FileStageStatus::UpToDate) {
@@ -135,9 +134,9 @@ void PackModController::rescanAndStage() {
         window_.stagingModel().addCustomStageEntries(files, dirKey);
     }
 
-    // Every staged file now matches its own hash -- rescan so the content
-    // pane reflects that (everything shows Up to date until the folder's
-    // contents actually change).
+    // Rescans to refresh the content pane's status column: every staged
+    // file now matches its own hash, showing Up to date until the folder's
+    // contents change.
     if (!filesByDir.empty()) {
         lastScan_ = scanFolder(selectedFolder_, stagedHashes_);
     }

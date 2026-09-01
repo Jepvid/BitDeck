@@ -237,7 +237,7 @@ std::vector<uint8_t> encodeN64Texture(const RgbaImage& image, TextureType type, 
                     size_t pos = (static_cast<size_t>(y) * static_cast<size_t>(width) + static_cast<size_t>(x)) / 2;
                     int r1 = image.r(x, y);
                     int r2 = image.r(x + 1, y);
-                    texData[pos] = static_cast<uint8_t>(((r1 / 16) << 4) + (r2 / 16));
+                    texData[pos] = static_cast<uint8_t>(((r1 / 17) << 4) + (r2 / 17));
                 }
             }
             break;
@@ -261,8 +261,8 @@ std::vector<uint8_t> encodeN64Texture(const RgbaImage& image, TextureType type, 
                     int r2 = image.r(x + 1, y);
                     int alphaBit1 = image.a(x, y) != 0 ? 1 : 0;
                     int alphaBit2 = image.a(x + 1, y) != 0 ? 1 : 0;
-                    int nib1 = ((r1 / 32) << 1) + alphaBit1;
-                    int nib2 = ((r2 / 32) << 1) + alphaBit2;
+                    int nib1 = ((r1 / 36) << 1) + alphaBit1;
+                    int nib2 = ((r2 / 36) << 1) + alphaBit2;
                     texData[pos] = static_cast<uint8_t>((nib1 << 4) | nib2);
                 }
             }
@@ -272,7 +272,7 @@ std::vector<uint8_t> encodeN64Texture(const RgbaImage& image, TextureType type, 
             for (int y = 0; y < height; ++y) {
                 for (int x = 0; x < width; ++x) {
                     size_t pos = static_cast<size_t>(y) * static_cast<size_t>(width) + static_cast<size_t>(x);
-                    texData[pos] = static_cast<uint8_t>(((image.r(x, y) / 16) << 4) + (image.a(x, y) / 16));
+                    texData[pos] = static_cast<uint8_t>(((image.r(x, y) / 17) << 4) + (image.a(x, y) / 17));
                 }
             }
             break;
@@ -301,7 +301,8 @@ std::vector<uint8_t> encodeN64Texture(const RgbaImage& image, TextureType type, 
 // Decode: N64 texel bytes -> RgbaImage
 // ---------------------------------------------------------------------------
 
-RgbaImage decodeN64Texture(const std::vector<uint8_t>& texData, TextureType type, int width, int height) {
+RgbaImage decodeN64Texture(const std::vector<uint8_t>& texData, TextureType type, int width, int height,
+                            bool previewI8AlphaFromIntensity) {
     switch (type) {
         case TextureType::RGBA32bpp: {
             RgbaImage image = RgbaImage::makeChannelImage(width, height, 4);
@@ -355,26 +356,34 @@ RgbaImage decodeN64Texture(const std::vector<uint8_t>& texData, TextureType type
             return image;
         }
         case TextureType::Grayscale4bpp: {
-            RgbaImage image = RgbaImage::makeChannelImage(width, height, 3);
+            // Real hardware ties I4's alpha to its own intensity: dark
+            // pixels read as transparent, only the bright core stays
+            // opaque.
+            RgbaImage image = RgbaImage::makeChannelImage(width, height, 4);
             for (int y = 0; y < height; ++y) {
                 for (int x = 0; x < width; x += 2) {
                     for (int i = 0; i < 2; ++i) {
                         size_t pos = (static_cast<size_t>(y) * static_cast<size_t>(width) + static_cast<size_t>(x)) / 2;
-                        uint8_t grayscale = (i == 0) ? static_cast<uint8_t>(texData[pos] & 0xF0)
-                                                      : static_cast<uint8_t>((texData[pos] & 0x0F) << 4);
-                        image.setRgba(x + i, y, grayscale, grayscale, grayscale, 0);
+                        uint8_t nibble = (i == 0) ? static_cast<uint8_t>(texData[pos] >> 4)
+                                                   : static_cast<uint8_t>(texData[pos] & 0x0F);
+                        uint8_t grayscale = static_cast<uint8_t>(nibble * 17);
+                        image.setRgba(x + i, y, grayscale, grayscale, grayscale, grayscale);
                     }
                 }
             }
             return image;
         }
         case TextureType::Grayscale8bpp: {
-            RgbaImage image = RgbaImage::makeChannelImage(width, height, 3);
+            // Real hardware always renders I8 fully opaque; previewI8AlphaFromIntensity
+            // trades that accuracy for a same-as-I4 dark-is-transparent preview.
+            int channels = previewI8AlphaFromIntensity ? 4 : 3;
+            RgbaImage image = RgbaImage::makeChannelImage(width, height, channels);
             for (int y = 0; y < height; ++y) {
                 for (int x = 0; x < width; ++x) {
                     size_t pos = static_cast<size_t>(y) * static_cast<size_t>(width) + static_cast<size_t>(x);
                     uint8_t grayscale = texData[pos];
-                    image.setRgba(x, y, grayscale, grayscale, grayscale, 0);
+                    uint8_t alpha = previewI8AlphaFromIntensity ? grayscale : 255;
+                    image.setRgba(x, y, grayscale, grayscale, grayscale, alpha);
                 }
             }
             return image;
@@ -386,7 +395,7 @@ RgbaImage decodeN64Texture(const std::vector<uint8_t>& texData, TextureType type
                     for (int i = 0; i < 2; ++i) {
                         size_t pos = (static_cast<size_t>(y) * static_cast<size_t>(width) + static_cast<size_t>(x)) / 2;
                         int nibble = (i == 0) ? ((texData[pos] & 0xF0) >> 4) : (texData[pos] & 0x0F);
-                        uint8_t grayscale = static_cast<uint8_t>(((nibble & 0x0E) >> 1) * 32);
+                        uint8_t grayscale = static_cast<uint8_t>(((nibble & 0x0E) >> 1) * 36);
                         uint8_t alpha = static_cast<uint8_t>((nibble & 0x01) * 255);
                         image.setRgba(x + i, y, grayscale, grayscale, grayscale, alpha);
                     }
@@ -399,8 +408,8 @@ RgbaImage decodeN64Texture(const std::vector<uint8_t>& texData, TextureType type
             for (int y = 0; y < height; ++y) {
                 for (int x = 0; x < width; ++x) {
                     size_t pos = static_cast<size_t>(y) * static_cast<size_t>(width) + static_cast<size_t>(x);
-                    uint8_t grayscale = static_cast<uint8_t>(texData[pos] & 0xF0);
-                    uint8_t alpha = static_cast<uint8_t>((texData[pos] & 0x0F) << 4);
+                    uint8_t grayscale = static_cast<uint8_t>((texData[pos] >> 4) * 17);
+                    uint8_t alpha = static_cast<uint8_t>((texData[pos] & 0x0F) * 17);
                     image.setRgba(x, y, grayscale, grayscale, grayscale, alpha);
                 }
             }

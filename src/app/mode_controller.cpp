@@ -8,9 +8,9 @@ namespace bitdeck {
 
 namespace {
 
-// hasTreePane() == false, empty content/status placeholders: the wrapped
-// page owns its own Open/select controls, so the shell's top-bar Open button
-// and status-bar strip stay inert for this mode.
+// hasTreePane() == false, empty content/status placeholders: the shell's
+// top-bar Open button and status-bar strip stay inert for this mode. The
+// wrapped page owns its own Open/select controls.
 class EmbeddedPageModeController : public ModeController {
 public:
     EmbeddedPageModeController(QString name, MainWindow& window, std::function<QWidget*(MainWindow&)> pageFactory)

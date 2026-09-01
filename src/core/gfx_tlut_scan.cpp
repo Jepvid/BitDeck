@@ -23,10 +23,21 @@ constexpr uint8_t kOpTri1 = 0x05;
 constexpr uint8_t kOpTri2 = 0x06;
 constexpr uint8_t kOpQuad = 0x07;
 constexpr uint8_t kOpLoadTlut = 0xF0;
+constexpr uint8_t kOpSetOtherModeL = 0xE2;
+constexpr uint8_t kOpRdpSetOtherMode = 0xEF; // sets both mode words directly; w1 holds the same render-mode bits gDPSetOtherMode/gDPSetRenderMode do
 constexpr uint8_t kOpEndDl = 0xDF;
+constexpr uint8_t kOpDl = 0xDE; // G_DL: branches to another display list (RSP state persists across the branch)
+constexpr uint32_t kForceBlBit = 0x4000; // FORCE_BL: every translucent N64 render mode sets this, no opaque one does
 
 bool isDrawOpcode(uint8_t opcode) {
     return opcode == kOpTri1 || opcode == kOpTri2 || opcode == kOpQuad;
+}
+
+// Draw commands plus a G_DL branch to another display list -- RSP state
+// (loaded texture, render mode) carries across the branch the same way it
+// carries across a literal triangle command.
+bool isDrawOrBranchOpcode(uint8_t opcode) {
+    return isDrawOpcode(opcode) || opcode == kOpDl;
 }
 
 // 128-bit (two 8-byte-word) commands; the second word pair holds a CRC64 hash.
@@ -271,6 +282,111 @@ DisplayListTlutInfo scanXmlDisplayListForTlutInfo(const std::vector<uint8_t>& re
 
     tracker.flushAtDrawBoundary();
     return tracker.info;
+}
+
+DisplayListTransparencyInfo scanDisplayListForTransparencyInfo(const std::vector<uint8_t>& resourceBytes) {
+    if (resourceBytes.size() < kHeaderSize + 1) {
+        return {};
+    }
+
+    Endianness endianness = endiannessFromValue(resourceBytes[0]);
+
+    size_t pos = kHeaderSize + 1; // header + ucode byte
+    pos = (pos + 7) & ~static_cast<size_t>(7); // pad to 8-byte alignment
+
+    DisplayListTransparencyInfo result;
+    bool hasPendingMode = false;
+    bool pendingIsTranslucent = false;
+    std::vector<uint64_t> pendingTextures;
+
+    while (pos + 8 <= resourceBytes.size()) {
+        uint32_t w0 = readWord(resourceBytes, pos, endianness);
+        uint32_t w1 = readWord(resourceBytes, pos + 4, endianness);
+        pos += 8;
+        auto opcode = static_cast<uint8_t>(w0 >> 24);
+
+        if (isExpandedOpcode(opcode)) {
+            if (pos + 8 > resourceBytes.size()) {
+                break;
+            }
+            uint32_t hashHi = readWord(resourceBytes, pos, endianness);
+            uint32_t hashLo = readWord(resourceBytes, pos + 4, endianness);
+            pos += 8;
+
+            if (opcode == kOpSetTimgOtrHash) {
+                uint32_t fmt = (w0 >> 21) & 0x7;
+                if (fmt == 3 || fmt == 4) { // G_IM_FMT_IA / G_IM_FMT_I
+                    auto hash = (static_cast<uint64_t>(hashHi) << 32) | hashLo;
+                    pendingTextures.push_back(hash);
+                }
+            }
+        } else if (opcode == kOpSetOtherModeL || opcode == kOpRdpSetOtherMode) {
+            pendingIsTranslucent = (w1 & kForceBlBit) != 0;
+            hasPendingMode = true;
+        } else if (isDrawOrBranchOpcode(opcode)) {
+            if (hasPendingMode) {
+                TextureBlendMode mode = pendingIsTranslucent ? TextureBlendMode::Translucent : TextureBlendMode::Opaque;
+                for (uint64_t hash : pendingTextures) {
+                    auto it = result.textureToBlendMode.find(hash);
+                    if (it == result.textureToBlendMode.end()) {
+                        result.textureToBlendMode.emplace(hash, mode);
+                    } else if (it->second != mode) {
+                        it->second = TextureBlendMode::Ambiguous;
+                    }
+                }
+            }
+            pendingTextures.clear();
+        } else if (opcode == kOpEndDl) {
+            break;
+        }
+    }
+
+    return result;
+}
+
+std::optional<TextureBlendMode> scanDisplayListOwnBlendMode(const std::vector<uint8_t>& resourceBytes) {
+    if (resourceBytes.size() < kHeaderSize + 1) {
+        return std::nullopt;
+    }
+
+    Endianness endianness = endiannessFromValue(resourceBytes[0]);
+
+    size_t pos = kHeaderSize + 1; // header + ucode byte
+    pos = (pos + 7) & ~static_cast<size_t>(7); // pad to 8-byte alignment
+
+    bool hasPendingMode = false;
+    bool pendingIsTranslucent = false;
+    std::optional<TextureBlendMode> result;
+
+    while (pos + 8 <= resourceBytes.size()) {
+        uint32_t w0 = readWord(resourceBytes, pos, endianness);
+        uint32_t w1 = readWord(resourceBytes, pos + 4, endianness);
+        pos += 8;
+        auto opcode = static_cast<uint8_t>(w0 >> 24);
+
+        if (isExpandedOpcode(opcode)) {
+            if (pos + 8 > resourceBytes.size()) {
+                break;
+            }
+            pos += 8;
+        } else if (opcode == kOpSetOtherModeL || opcode == kOpRdpSetOtherMode) {
+            pendingIsTranslucent = (w1 & kForceBlBit) != 0;
+            hasPendingMode = true;
+        } else if (isDrawOrBranchOpcode(opcode)) {
+            if (hasPendingMode) {
+                TextureBlendMode mode = pendingIsTranslucent ? TextureBlendMode::Translucent : TextureBlendMode::Opaque;
+                if (!result.has_value()) {
+                    result = mode;
+                } else if (*result != mode) {
+                    result = TextureBlendMode::Ambiguous;
+                }
+            }
+        } else if (opcode == kOpEndDl) {
+            break;
+        }
+    }
+
+    return result;
 }
 
 } // namespace bitdeck

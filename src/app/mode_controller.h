@@ -14,9 +14,9 @@ class MainWindow;
 
 // One instance per shell mode (Pack Mod, Make Texture Pack, ...). Owns that
 // mode's tree pane, content pane, and status-bar strip, plus the
-// select/scan/stage logic behind them. ShellWindow constructs one of each up
-// front and swaps which one is visible on mode selection -- a controller is
-// never recreated, so in-progress scan state survives a mode switch.
+// select/scan/stage logic behind them. In-progress scan state survives a
+// mode switch: ShellWindow constructs one of each up front and swaps which
+// one is visible, never recreating a controller.
 class ModeController : public QObject {
     Q_OBJECT
 

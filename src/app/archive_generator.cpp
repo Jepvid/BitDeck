@@ -74,8 +74,9 @@ void generateArchive(const std::map<std::string, StageEntry>& entries, const std
         total += static_cast<int>(stageEntryFileCount(entry));
     }
 
-    // Removes any existing file at outputPath so Arc creates a fresh
-    // archive instead of opening the old one for read/append.
+    // Arc always creates a fresh archive at outputPath, never reopens an
+    // existing one for read/append -- any existing file there is removed
+    // first.
     if (std::filesystem::exists(outputPath)) {
         std::filesystem::remove(outputPath);
     }

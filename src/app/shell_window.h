@@ -20,8 +20,9 @@ class MainWindow;
 // tree/content body, and the status-bar strip. Holds one ModeController per
 // mode; switching modes swaps which controller's tree/content/status
 // widgets are visible via three parallel QStackedWidgets kept in lockstep
-// with the mode QComboBox. Controllers are constructed once up front, so an
-// in-progress scan in one mode survives switching to another and back.
+// with the mode QComboBox. An in-progress scan in one mode survives
+// switching to another and back: controllers are constructed once up
+// front, never recreated.
 class ShellWindow : public QWidget {
     Q_OBJECT
 

@@ -17,8 +17,11 @@
 #include "../core/sha256.h"
 #include "../core/types/background.h"
 #include "../core/types/texture.h"
+#include "../games/bk64_i8_transparency_map.h"
 #include "../games/mk64_tlut_map.h"
+#include "../games/mm_i8_transparency_map.h"
 #include "../games/mm_tlut_map.h"
+#include "../games/oot_i8_transparency_map.h"
 #include "../games/oot_tlut_map.h"
 #include "../games/sf64_tlut_map.h"
 #include "game_conventions_registry.h"
@@ -320,6 +323,109 @@ TlutIndex buildTlutIndex(const std::vector<std::string>& archivePaths) {
     return index;
 }
 
+struct TransparencyIndex {
+    // Every I/IA-format resource's path hash mapped to the render mode
+    // (opaque/translucent/ambiguous) found active at its draw across every
+    // display list in archivePaths (see scanDisplayListForTransparencyInfo).
+    std::unordered_map<uint64_t, TextureBlendMode> textureToBlendMode;
+    // Folder path -> every DisplayList resource in that folder with a
+    // determinable own render mode (see scanDisplayListOwnBlendMode),
+    // independent of texture identity.
+    std::unordered_map<std::string, std::vector<TextureBlendMode>> folderToOwnBlendModes;
+    bool looksLikeMm = false;
+    bool looksLikeOot = false;
+    bool looksLikeBk64 = false;
+};
+
+// Scans archivePaths' own display lists into a TransparencyIndex: every
+// I/IA texture's render mode (see scanDisplayListForTransparencyInfo),
+// every folder's set of DL-own render modes (see scanDisplayListOwnBlendMode),
+// and each game-exclusive marker path seen. A texture absent from
+// textureToBlendMode was never drawn by any of this archive's own display
+// lists (e.g. a texture only ever drawn by a runtime-built Gfx array in
+// game code) -- see the baked per-game *_i8_transparency_map fallback.
+TransparencyIndex buildTransparencyIndex(const std::vector<std::string>& archivePaths) {
+    TransparencyIndex index;
+    for (const auto& archivePath : archivePaths) {
+        Arc arc(archivePath);
+        arc.listItems([&](const std::string& fileName, const std::vector<uint8_t>& data) {
+            if (fileName.rfind("parameter_static/", 0) == 0) {
+                index.looksLikeMm = true;
+            } else if (fileName.rfind("objects/object_anubice/", 0) == 0) {
+                index.looksLikeOot = true;
+            } else if (fileName.rfind("assets/sprite/", 0) == 0) {
+                index.looksLikeBk64 = true;
+            }
+
+            if (data.empty() || data[0] == '<') {
+                return;
+            }
+            Resource sniffer;
+            sniffer.rawLoad = true;
+            sniffer.open(data);
+            if (sniffer.resourceType() != ResourceType::DisplayList) {
+                return;
+            }
+            DisplayListTransparencyInfo info = scanDisplayListForTransparencyInfo(data);
+            for (const auto& [hash, mode] : info.textureToBlendMode) {
+                auto it = index.textureToBlendMode.find(hash);
+                if (it == index.textureToBlendMode.end()) {
+                    index.textureToBlendMode.emplace(hash, mode);
+                } else if (it->second != mode) {
+                    it->second = TextureBlendMode::Ambiguous;
+                }
+            }
+
+            if (auto ownMode = scanDisplayListOwnBlendMode(data); ownMode.has_value()) {
+                std::string folder = std::filesystem::path(fileName).parent_path().string();
+                index.folderToOwnBlendModes[folder].push_back(*ownMode);
+            }
+        });
+        arc.close();
+    }
+    return index;
+}
+
+// True if fileName's I8 texture is confirmed safe for the dark-is-
+// transparent preview: found translucent (and never opaque) by this
+// archive's own display lists, by this texture's folder having exactly one
+// DisplayList resource with a determinable render mode (see
+// folderToOwnBlendModes; matches findTlutHash's folderToConfirmedTluts
+// singleton check), or by the baked per-game source-derived fallback
+// table. False for anything not confirmed by any of these.
+bool i8TextureIsTranslucent(const std::string& fileName, const TransparencyIndex& transparencyIndex) {
+    auto it = transparencyIndex.textureToBlendMode.find(crc64(fileName));
+    if (it != transparencyIndex.textureToBlendMode.end()) {
+        return it->second == TextureBlendMode::Translucent;
+    }
+    std::string folder = std::filesystem::path(fileName).parent_path().string();
+    auto folderIt = transparencyIndex.folderToOwnBlendModes.find(folder);
+    if (folderIt != transparencyIndex.folderToOwnBlendModes.end() && folderIt->second.size() == 1) {
+        return folderIt->second.front() == TextureBlendMode::Translucent;
+    }
+    if (transparencyIndex.looksLikeMm) {
+        return mmI8TextureIsTranslucent(fileName);
+    }
+    if (transparencyIndex.looksLikeOot) {
+        return ootI8TextureIsTranslucent(fileName);
+    }
+    if (transparencyIndex.looksLikeBk64) {
+        return bk64I8TextureIsTranslucent(fileName);
+    }
+    // TODO(MK64): no baked fallback table -- the live scan finds 0/15 of
+    // MK64's I8 textures (unlike BK64, none are paired via a compiled
+    // display list or a folder-singleton). The ones that matter (drift
+    // smoke/spark particles) ARE genuinely translucent in source
+    // (code_80057C60.c: gDPSetRenderMode(..., G_RM_ZB_XLU_SURF, ...)), but
+    // the texture pointer reaching that call goes through still-unmatched
+    // decomp symbols (D_800E4770[] -> &D_8018D420 etc., assigned
+    // elsewhere at load time) that can't be text-matched to a texture
+    // name without real reverse-engineering. kart_shadow and 5 unnamed
+    // offset textures have no source references at all. Revisit once
+    // that part of the mk64-master decomp is further along.
+    return false;
+}
+
 // Finds the TLUT hash paired with fileName: a baked ground-truth match
 // (MK64, MM, OOT, SF64), a display list that named both sides, a
 // name-matched candidate, this folder's one confirmed TLUT, or the
@@ -500,7 +606,7 @@ void resolveAndApplyTlut(RgbaImage& decoded, const std::string& fileName, const 
 
 TextureManifestMap extractTexturesToFolder(const std::vector<std::string>& archivePaths,
                                             const std::filesystem::path& targetDir, TaskProgress& progress,
-                                            bool applyTlut) {
+                                            bool applyTlut, bool previewI8AlphaFromIntensity) {
     TextureManifestMap manifest;
     if (archivePaths.empty()) {
         return manifest;
@@ -521,6 +627,11 @@ TextureManifestMap extractTexturesToFolder(const std::vector<std::string>& archi
         tlutIndex = buildTlutIndex(archivePaths);
     }
 
+    TransparencyIndex transparencyIndex;
+    if (previewI8AlphaFromIntensity) {
+        transparencyIndex = buildTransparencyIndex(archivePaths);
+    }
+
     for (const auto& archivePath : archivePaths) {
         Arc arc(archivePath);
         arc.listItems([&](const std::string& fileName, const std::vector<uint8_t>& data) {
@@ -536,8 +647,11 @@ TextureManifestMap extractTexturesToFolder(const std::vector<std::string>& archi
                     // as JPEG (e.g. SM64's non-image ipl3_raw font blobs).
                     writeFileBytes(targetDir / (fileName + ".raw"), texture.texData());
                 } else if (texture.isValid()) {
-                    RgbaImage decoded =
-                        decodeN64Texture(texture.texData(), texture.textureType(), texture.width(), texture.height());
+                    bool previewThisI8 = previewI8AlphaFromIntensity &&
+                                         texture.textureType() == TextureType::Grayscale8bpp &&
+                                         i8TextureIsTranslucent(fileName, transparencyIndex);
+                    RgbaImage decoded = decodeN64Texture(texture.texData(), texture.textureType(), texture.width(),
+                                                          texture.height(), previewThisI8);
                     if (applyTlut && texture.isPalette()) {
                         resolveAndApplyTlut(decoded, fileName, tlutIndex, tlutPaletteCache, tlutArchiveCache);
                     }

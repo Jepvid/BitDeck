@@ -28,17 +28,18 @@ class FilePreview;
 // auto-stage-on-open/SHA-256-dedup shape as Pack Mod.
 //  - Open Folder...: a folder of replacement images matched against
 //    manifest.json (+ optional aliases.json), staged as a
-//    CustomTexturesEntry. One source image can fan out to several target
-//    archive paths via aliases.json, so content rows are keyed by the
-//    resolved target rather than 1:1 with source files. Every matched
-//    texture is shown, with status comparing its current hash against
-//    manifest.json's recorded baseline hash; only edited images get staged.
+//    CustomTexturesEntry. Content rows are keyed by the resolved target
+//    archive path, not 1:1 with source files (one source image can fan out
+//    to several targets via aliases.json). Every matched texture is shown,
+//    with status comparing its current hash against manifest.json's
+//    recorded baseline hash; only edited images get staged.
 //  - "Extract textures from otr/o2r" (status bar button): picks one or more
 //    .otr/.o2r files and an output folder, runs extractTexturesToFolder()
 //    (decodes every Texture/Background resource to PNG/JPG + a fresh
 //    manifest.json, with Apply TLUT recovering real palette colors for
-//    CI4/CI8 textures), then opens that folder into the same tree/content
-//    pane as "Open Folder...".
+//    CI4/CI8 textures and the I8 preview toggle giving confirmed-translucent
+//    I8 textures real alpha instead of hardware's constant opaque), then
+//    opens that folder into the same tree/content pane as "Open Folder...".
 class MakeTexturePackController : public ModeController {
     Q_OBJECT
 
@@ -83,6 +84,7 @@ private:
     QWidget* statusBar_ = nullptr;
     QLabel* fileCountLabel_ = nullptr;
     QCheckBox* applyTlutCheckbox_ = nullptr;
+    QCheckBox* previewI8AlphaCheckbox_ = nullptr;
     QPushButton* extractButton_ = nullptr;
 };
 
