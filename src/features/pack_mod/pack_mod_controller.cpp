@@ -14,6 +14,7 @@
 #include <filesystem>
 
 #include "../../app/file_preview.h"
+#include "../../app/finalize_dialog.h"
 #include "../../app/main_window.h"
 #include "../../core/path_utils.h"
 
@@ -36,7 +37,13 @@ QString statusText(FileStageStatus status) {
 
 PackModController::PackModController(MainWindow& window) : ModeController(window) {
     // Clears the dedup cache after a successful generate.
-    connect(&window_.stagingModel(), &StagingModel::generationFinished, this, [this] { stagedHashes_.clear(); });
+    connect(&stagingModel_, &StagingModel::generationFinished, this, [this] { stagedHashes_.clear(); });
+}
+
+void PackModController::onPrimaryActionRequested() {
+    rescanAndStage();
+    FinalizeDialog dialog(stagingModel_, /*showPrependAlt=*/false, treeWidget());
+    dialog.exec();
 }
 
 QWidget* PackModController::treeWidget() {
@@ -131,7 +138,7 @@ void PackModController::rescanAndStage() {
         stagedHashes_[file.relativeKey] = file.contentHash;
     }
     for (const auto& [dirKey, files] : filesByDir) {
-        window_.stagingModel().addCustomStageEntries(files, dirKey);
+        stagingModel_.addCustomStageEntries(files, dirKey);
     }
 
     // Rescans to refresh the content pane's status column: every staged

@@ -6,12 +6,12 @@
 
 namespace bitdeck {
 
-FinalizeDialog::FinalizeDialog(MainWindow& window, QWidget* parent) : QDialog(parent) {
-    setWindowTitle(tr("Finalize Mod"));
+FinalizeDialog::FinalizeDialog(StagingModel& stagingModel, bool showPrependAlt, QWidget* parent) : QDialog(parent) {
+    setWindowTitle(tr("Export Mod"));
     resize(480, 400);
 
     auto* layout = new QVBoxLayout(this);
-    panel_ = new FinishPanel(window, this);
+    panel_ = new FinishPanel(stagingModel, showPrependAlt, this);
     layout->addWidget(panel_);
 
     connect(panel_, &FinishPanel::archiveGenerated, this, &QDialog::accept);

@@ -19,6 +19,7 @@
 
 #include "../../app/background_worker.h"
 #include "../../app/file_preview.h"
+#include "../../app/finalize_dialog.h"
 #include "../../app/game_conventions_registry.h"
 #include "../../app/main_window.h"
 #include "../../app/texture_extraction.h"
@@ -59,7 +60,13 @@ QString statusText(FileStageStatus status) {
 
 MakeTexturePackController::MakeTexturePackController(MainWindow& window) : ModeController(window) {
     // Clears the dedup cache after a successful generate.
-    connect(&window_.stagingModel(), &StagingModel::generationFinished, this, [this] { stagedHashes_.clear(); });
+    connect(&stagingModel_, &StagingModel::generationFinished, this, [this] { stagedHashes_.clear(); });
+}
+
+void MakeTexturePackController::onPrimaryActionRequested() {
+    rescanAndStage();
+    FinalizeDialog dialog(stagingModel_, /*showPrependAlt=*/true, treeWidget());
+    dialog.exec();
 }
 
 QWidget* MakeTexturePackController::treeWidget() {
@@ -107,20 +114,19 @@ QWidget* MakeTexturePackController::statusBarWidget() {
 
     layout->addStretch(1);
 
-    applyTlutCheckbox_ = new QCheckBox(QObject::tr("Apply TLUT to applicable images"));
+    applyTlutCheckbox_ = new QCheckBox(QObject::tr("Apply TLUT"));
     applyTlutCheckbox_->setChecked(true);
+    applyTlutCheckbox_->setToolTip(QObject::tr("Colors CI4/CI8 textures with their real palette."));
     layout->addWidget(applyTlutCheckbox_);
 
-    previewI8AlphaCheckbox_ = new QCheckBox(QObject::tr("Apply transparency to applicable IA4/IA8 textures"));
+    previewI8AlphaCheckbox_ = new QCheckBox(QObject::tr("Apply IA Transparency"));
     previewI8AlphaCheckbox_->setChecked(true);
-    previewI8AlphaCheckbox_->setToolTip(QObject::tr(
-        "Treats dark pixels as transparent for I8 textures confirmed drawn with a translucent "
-        "render mode in-game (glow/spark/dust), so their real shape is visible when editing. "
-        "Plain opaque I8 surfaces (item textures, patterns) are left untouched -- this is "
-        "checked per-texture, not applied blindly."));
+    previewI8AlphaCheckbox_->setToolTip(
+        QObject::tr("Shows real transparency for glow/spark/dust IA4/IA8 textures."));
     layout->addWidget(previewI8AlphaCheckbox_);
 
     extractButton_ = new QPushButton(QObject::tr("Extract textures from otr/o2r"));
+    extractButton_->setToolTip(QObject::tr("Decode textures from OTR/O2R files to PNG/JPG for editing."));
     connect(extractButton_, &QPushButton::clicked, this, &MakeTexturePackController::onExtractTexturesClicked);
     layout->addWidget(extractButton_);
 
@@ -251,7 +257,7 @@ void MakeTexturePackController::rescanAndStage() {
     }
 
     if (!toStage.empty()) {
-        window_.stagingModel().addCustomTextureEntry(toStage);
+        stagingModel_.addCustomTextureEntry(toStage);
     }
 
     refreshContentForSelectedFolder();

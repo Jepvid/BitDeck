@@ -14,6 +14,7 @@
 #include <cctype>
 
 #include "../../app/file_preview.h"
+#include "../../app/finalize_dialog.h"
 #include "../../app/main_window.h"
 #include "../../core/path_utils.h"
 
@@ -62,7 +63,13 @@ QString statusText(FileStageStatus status) {
 
 CustomSequencesController::CustomSequencesController(MainWindow& window) : ModeController(window) {
     // Clears the dedup cache after a successful generate.
-    connect(&window_.stagingModel(), &StagingModel::generationFinished, this, [this] { stagedHashes_.clear(); });
+    connect(&stagingModel_, &StagingModel::generationFinished, this, [this] { stagedHashes_.clear(); });
+}
+
+void CustomSequencesController::onPrimaryActionRequested() {
+    rescanAndStage();
+    FinalizeDialog dialog(stagingModel_, /*showPrependAlt=*/false, treeWidget());
+    dialog.exec();
 }
 
 QWidget* CustomSequencesController::treeWidget() {
@@ -154,7 +161,7 @@ void CustomSequencesController::rescanAndStage() {
         stagedHashes_[file.relativeKey] = file.contentHash;
     }
     if (!pendingPairs.empty()) {
-        window_.stagingModel().addCustomSequenceEntry(pendingPairs, kArchiveKey);
+        stagingModel_.addCustomSequenceEntry(pendingPairs, kArchiveKey);
         lastScan_ = scanPairedSequences(selectedFolder_, stagedHashes_);
     }
     refreshContentForSelectedFolder();

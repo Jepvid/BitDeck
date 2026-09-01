@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "../../app/mode_controller.h"
+#include "../../app/staging_model.h"
 #include "../../core/folder_scan.h"
 #include "../../games/game_texture_conventions.h"
 
@@ -25,7 +26,7 @@ namespace bitdeck {
 class FilePreview;
 
 // "Make Texture Pack" mode: a single folder-backed tree/content pane, same
-// auto-stage-on-open/SHA-256-dedup shape as Pack Mod.
+// auto-stage-on-open/SHA-256-dedup shape as Custom Files.
 //  - Open Folder...: a folder of replacement images matched against
 //    manifest.json (+ optional aliases.json), staged as a
 //    CustomTexturesEntry. Content rows are keyed by the resolved target
@@ -51,7 +52,8 @@ public:
     QWidget* contentWidget() override;
     QWidget* statusBarWidget() override;
     void onOpenRequested() override;
-    void rescanBeforeFinalize() override { rescanAndStage(); }
+    QString primaryActionLabel() const override { return QObject::tr("Export Mod"); }
+    void onPrimaryActionRequested() override;
 
 private:
     struct PendingTexture {
@@ -70,6 +72,7 @@ private:
     void onContentRowSelected();
     void onExtractTexturesClicked();
 
+    StagingModel stagingModel_;
     std::filesystem::path selectedFolder_;
     std::map<std::string, std::string> stagedHashes_; // target archive path -> sha256
     std::vector<PendingTexture> lastScan_;

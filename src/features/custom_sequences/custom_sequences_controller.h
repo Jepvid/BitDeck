@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "../../app/mode_controller.h"
+#include "../../app/staging_model.h"
 #include "../../core/folder_scan.h"
 
 class QFileSystemModel;
@@ -38,7 +39,8 @@ public:
     QWidget* contentWidget() override;
     QWidget* statusBarWidget() override;
     void onOpenRequested() override;
-    void rescanBeforeFinalize() override { rescanAndStage(); }
+    QString primaryActionLabel() const override { return QObject::tr("Export Mod"); }
+    void onPrimaryActionRequested() override;
 
 private:
     void rescanAndStage();
@@ -48,6 +50,7 @@ private:
 
     static constexpr const char* kArchiveKey = "custom/music";
 
+    StagingModel stagingModel_;
     std::filesystem::path selectedFolder_;
     std::map<std::string, std::string> stagedHashes_; // relativeKey (.seq) -> sha256
     std::vector<ScannedFile> lastScan_;               // .seq files with a matching .meta only

@@ -1,10 +1,7 @@
 #include "shell_window.h"
 
 #include <QComboBox>
-#include <QCoreApplication>
 #include <QHBoxLayout>
-#include <QLabel>
-#include <QProgressBar>
 #include <QPushButton>
 #include <QSplitter>
 #include <QStackedWidget>
@@ -12,7 +9,7 @@
 #include <QWidget>
 
 #include "config_dialog.h"
-#include "finalize_dialog.h"
+#include "instructions_dialog.h"
 #include "main_window.h"
 #include "../features/common/not_implemented_page.h"
 #include "../features/custom_sequences/custom_sequences_controller.h"
@@ -40,9 +37,21 @@ ShellWindow::ShellWindow(MainWindow& window, QWidget* parent) : QWidget(parent),
 
     auto* topBar = new QWidget();
     auto* topBarLayout = new QHBoxLayout(topBar);
+    const QStringList modeTooltips = {
+        tr("Pack folder content as is."),
+        tr("Match replacement images against a manifest, or extract textures to start editing."),
+        tr("Stage .seq audio files paired with .meta sidecars."),
+        tr("Browse an OTR/O2R archive's contents, read-only."),
+        tr("Round-trip PNG and N64 texture formats for testing."),
+        tr("Not yet implemented."),
+    };
+
     modeCombo_ = new QComboBox();
-    for (const auto& controller : controllers_) {
-        modeCombo_->addItem(controller->name());
+    for (size_t i = 0; i < controllers_.size(); ++i) {
+        modeCombo_->addItem(controllers_[i]->name());
+        if (i < static_cast<size_t>(modeTooltips.size())) {
+            modeCombo_->setItemData(static_cast<int>(i), modeTooltips[static_cast<int>(i)], Qt::ToolTipRole);
+        }
     }
     connect(modeCombo_, &QComboBox::currentIndexChanged, this, &ShellWindow::onModeChanged);
     topBarLayout->addWidget(modeCombo_);
@@ -56,6 +65,12 @@ ShellWindow::ShellWindow(MainWindow& window, QWidget* parent) : QWidget(parent),
     primaryActionButton_ = new QPushButton();
     connect(primaryActionButton_, &QPushButton::clicked, this, &ShellWindow::onPrimaryActionClicked);
     topBarLayout->addWidget(primaryActionButton_);
+
+    instructionsButton_ = new QPushButton(tr("?"));
+    instructionsButton_->setToolTip(tr("Instructions: what each mode is for and how to build a mod."));
+    instructionsButton_->setFixedWidth(28);
+    connect(instructionsButton_, &QPushButton::clicked, this, &ShellWindow::onInstructionsClicked);
+    topBarLayout->addWidget(instructionsButton_);
 
     settingsButton_ = new QPushButton(tr("Settings"));
     connect(settingsButton_, &QPushButton::clicked, this, &ShellWindow::onSettingsClicked);
@@ -83,17 +98,6 @@ ShellWindow::ShellWindow(MainWindow& window, QWidget* parent) : QWidget(parent),
         statusBarStack_->addWidget(controller->statusBarWidget());
     }
 
-    auto* scanningStatusWidget = new QWidget();
-    auto* scanningLayout = new QHBoxLayout(scanningStatusWidget);
-    scanningLayout->setContentsMargins(8, 4, 8, 4);
-    scanningLayout->addWidget(new QLabel(tr("Scanning for new or changed files...")));
-    auto* scanningBar = new QProgressBar();
-    scanningBar->setRange(0, 0); // indeterminate -- duration is unknown up front
-    scanningBar->setMaximumWidth(150);
-    scanningLayout->addWidget(scanningBar);
-    scanningLayout->addStretch(1);
-    scanningStatusIndex_ = statusBarStack_->addWidget(scanningStatusWidget);
-
     layout->addWidget(statusBarStack_);
 
     onModeChanged(0);
@@ -106,7 +110,9 @@ void ShellWindow::onModeChanged(int index) {
 
     ModeController& controller = *controllers_[index];
     openButton_->setText(controller.openButtonLabel());
-    primaryActionButton_->setText(controller.primaryActionLabel());
+    QString primaryLabel = controller.primaryActionLabel();
+    primaryActionButton_->setText(primaryLabel);
+    primaryActionButton_->setVisible(!primaryLabel.isEmpty());
     treeStack_->setVisible(controller.hasTreePane());
 }
 
@@ -115,28 +121,16 @@ void ShellWindow::onOpenClicked() {
 }
 
 void ShellWindow::onPrimaryActionClicked() {
-    ModeController& controller = currentController();
-    if (!controller.usesFinalizeFlow()) {
-        controller.onPrimaryActionRequested();
-        return;
-    }
-
-    // Swaps the status bar to a progress meter for the duration of the
-    // synchronous rescan, then restores it.
-    int previousStatusIndex = statusBarStack_->currentIndex();
-    statusBarStack_->setCurrentIndex(scanningStatusIndex_);
-    QCoreApplication::processEvents();
-
-    controller.rescanBeforeFinalize();
-
-    statusBarStack_->setCurrentIndex(previousStatusIndex);
-
-    FinalizeDialog dialog(window_, this);
-    dialog.exec();
+    currentController().onPrimaryActionRequested();
 }
 
 void ShellWindow::onSettingsClicked() {
     ConfigDialog dialog(this);
+    dialog.exec();
+}
+
+void ShellWindow::onInstructionsClicked() {
+    InstructionsDialog dialog(this);
     dialog.exec();
 }
 

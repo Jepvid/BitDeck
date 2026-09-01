@@ -12,7 +12,7 @@ namespace bitdeck {
 
 class MainWindow;
 
-// One instance per shell mode (Pack Mod, Make Texture Pack, ...). Owns that
+// One instance per shell mode (Custom Files, Make Texture Pack, ...). Owns that
 // mode's tree pane, content pane, and status-bar strip, plus the
 // select/scan/stage logic behind them. In-progress scan state survives a
 // mode switch: ShellWindow constructs one of each up front and swaps which
@@ -36,18 +36,12 @@ public:
     // mode is active.
     virtual void onOpenRequested() = 0;
 
-    // Called on the active mode just before Finalize Mod opens its dialog.
-    // No-op by default -- folder-backed modes override it to rerun their
-    // rescan-and-stage logic.
-    virtual void rescanBeforeFinalize() {}
-
-    // Label and behavior for the top bar's right-side action button.
-    // Default: "Finalize Mod", handled by ShellWindow via
-    // rescanBeforeFinalize() + FinalizeDialog. A mode can replace both --
-    // return false from usesFinalizeFlow() and override primaryActionLabel()
-    // and onPrimaryActionRequested() (e.g. Inspect OTR's "Extract OTR/O2R").
-    virtual QString primaryActionLabel() const { return QObject::tr("Finalize Mod"); }
-    virtual bool usesFinalizeFlow() const { return true; }
+    // Label for the top bar's right-side action button; empty hides it.
+    // Each mode owns its own staging and its own action entirely (e.g. a
+    // folder-backed mode's own "Export Mod" opens a FinalizeDialog over its
+    // own private StagingModel, Inspect OTR's is "Extract OTR/O2R") --
+    // there is no cross-mode combined output.
+    virtual QString primaryActionLabel() const { return QString(); }
     virtual void onPrimaryActionRequested() {}
 
 protected:

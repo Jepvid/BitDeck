@@ -4,17 +4,17 @@
 
 namespace bitdeck {
 
-class MainWindow;
+class StagingModel;
 class FinishPanel;
 
 // Hosts the existing FinishPanel (staged-entries list, extension picker,
-// Generate button) as a modal dialog, opened by the shell's top-bar
-// "Finalize Mod" button. Closes itself once generation succeeds.
+// Generate button) as a modal dialog, scoped to whichever StagingModel it's
+// given -- each mode opens its own. Closes itself once generation succeeds.
 class FinalizeDialog : public QDialog {
     Q_OBJECT
 
 public:
-    explicit FinalizeDialog(MainWindow& window, QWidget* parent = nullptr);
+    explicit FinalizeDialog(StagingModel& stagingModel, bool showPrependAlt = false, QWidget* parent = nullptr);
 
 private:
     FinishPanel* panel_;

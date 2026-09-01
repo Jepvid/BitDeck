@@ -13,11 +13,12 @@
 
 #include "../../app/archive_generator.h"
 #include "../../app/background_worker.h"
-#include "../../app/main_window.h"
+#include "../../app/staging_model.h"
 
 namespace bitdeck {
 
-FinishPanel::FinishPanel(MainWindow& window, QWidget* parent) : QWidget(parent), window_(window) {
+FinishPanel::FinishPanel(StagingModel& stagingModel, bool showPrependAlt, QWidget* parent)
+    : QWidget(parent), stagingModel_(stagingModel) {
     auto* layout = new QVBoxLayout(this);
 
     entriesList_ = new QListWidget(this);
@@ -26,21 +27,23 @@ FinishPanel::FinishPanel(MainWindow& window, QWidget* parent) : QWidget(parent),
     auto* controlsRow = new QHBoxLayout();
     extensionCombo_ = new QComboBox(this);
     extensionCombo_->addItems({QStringLiteral("o2r"), QStringLiteral("otr")});
-    extensionCombo_->setCurrentText(window_.stagingModel().outputExtension());
+    extensionCombo_->setCurrentText(stagingModel_.outputExtension());
     connect(extensionCombo_, &QComboBox::currentTextChanged, this,
-            [this](const QString& ext) { window_.stagingModel().setOutputExtension(ext); });
+            [this](const QString& ext) { stagingModel_.setOutputExtension(ext); });
     controlsRow->addWidget(extensionCombo_);
 
-    prependAltCheckbox_ = new QCheckBox(tr("Prepend alt/"), this);
-    prependAltCheckbox_->setChecked(window_.stagingModel().prependAlt);
-    connect(prependAltCheckbox_, &QCheckBox::toggled, this,
-            [this](bool checked) { window_.stagingModel().prependAlt = checked; });
-    controlsRow->addWidget(prependAltCheckbox_);
+    if (showPrependAlt) {
+        prependAltCheckbox_ = new QCheckBox(tr("Prepend alt/"), this);
+        prependAltCheckbox_->setChecked(stagingModel_.prependAlt);
+        connect(prependAltCheckbox_, &QCheckBox::toggled, this,
+                [this](bool checked) { stagingModel_.prependAlt = checked; });
+        controlsRow->addWidget(prependAltCheckbox_);
+    }
 
     compressCheckbox_ = new QCheckBox(tr("Compress files"), this);
-    compressCheckbox_->setChecked(window_.stagingModel().compressFiles);
+    compressCheckbox_->setChecked(stagingModel_.compressFiles);
     connect(compressCheckbox_, &QCheckBox::toggled, this,
-            [this](bool checked) { window_.stagingModel().compressFiles = checked; });
+            [this](bool checked) { stagingModel_.compressFiles = checked; });
     controlsRow->addWidget(compressCheckbox_);
 
     generateButton_ = new QPushButton(tr("Generate"), this);
@@ -52,25 +55,24 @@ FinishPanel::FinishPanel(MainWindow& window, QWidget* parent) : QWidget(parent),
     statusLabel_->setStyleSheet(QStringLiteral("color: white;"));
     layout->addWidget(statusLabel_);
 
-    connect(&window_.stagingModel(), &StagingModel::changed, this, &FinishPanel::refresh);
+    connect(&stagingModel_, &StagingModel::changed, this, &FinishPanel::refresh);
     refresh();
 }
 
 void FinishPanel::refresh() {
     entriesList_->clear();
-    for (const auto& [key, entry] : window_.stagingModel().entries()) {
+    for (const auto& [key, entry] : stagingModel_.entries()) {
         auto label = QStringLiteral("%1 (%2 files)")
                          .arg(QString::fromStdString(key.empty() ? "(root)" : key))
                          .arg(stageEntryFileCount(entry));
         entriesList_->addItem(label);
     }
-    bool hasEntries = !window_.stagingModel().entries().empty();
-    generateButton_->setEnabled(hasEntries && !window_.stagingModel().isGenerating());
+    bool hasEntries = !stagingModel_.entries().empty();
+    generateButton_->setEnabled(hasEntries && !stagingModel_.isGenerating());
 }
 
 void FinishPanel::onGenerate() {
-    auto& stagingModel = window_.stagingModel();
-    if (stagingModel.entries().empty()) {
+    if (stagingModel_.entries().empty()) {
         return;
     }
 
@@ -100,16 +102,16 @@ void FinishPanel::onGenerate() {
     settings.setValue(QStringLiteral("finalize/lastOutputPath"), path);
 
     int total = 0;
-    for (const auto& [key, entry] : stagingModel.entries()) {
+    for (const auto& [key, entry] : stagingModel_.entries()) {
         total += static_cast<int>(stageEntryFileCount(entry));
     }
-    stagingModel.beginGeneration(total);
+    stagingModel_.beginGeneration(total);
     generateButton_->setEnabled(false);
     statusLabel_->setText(tr("Generating..."));
 
-    auto entriesSnapshot = stagingModel.entries();
-    bool compress = stagingModel.compressFiles;
-    bool prependAlt = stagingModel.prependAlt;
+    auto entriesSnapshot = stagingModel_.entries();
+    bool compress = stagingModel_.compressFiles;
+    bool prependAlt = stagingModel_.prependAlt;
     std::string outputPath = path.toStdString();
 
     runInBackground(
@@ -117,18 +119,18 @@ void FinishPanel::onGenerate() {
             generateArchive(entriesSnapshot, outputPath, compress, prependAlt, progress);
         },
         [this](int processed, int total) {
-            window_.stagingModel().reportGenerationProgress(processed);
+            stagingModel_.reportGenerationProgress(processed);
             statusLabel_->setText(tr("Generating... (%1/%2)").arg(processed).arg(total));
         },
         [this] {
             statusLabel_->setText(tr("Done"));
-            window_.stagingModel().finishGeneration();
-            window_.stagingModel().clear();
+            stagingModel_.finishGeneration();
+            stagingModel_.clear();
             emit archiveGenerated();
         },
         [this](QString error) {
             statusLabel_->setText(tr("Failed: %1").arg(error));
-            window_.stagingModel().failGeneration(error);
+            stagingModel_.failGeneration(error);
             generateButton_->setEnabled(true);
         });
 }

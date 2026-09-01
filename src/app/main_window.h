@@ -2,25 +2,20 @@
 
 #include <QMainWindow>
 
-#include "staging_model.h"
-
 namespace bitdeck {
 
 class ShellWindow;
 
-// Top-level window: owns the app-wide StagingModel (every mode's staged
-// entries accumulate here, combined into one archive by Finalize Mod) and
-// hosts the ShellWindow that provides all actual UI.
+// Top-level window: hosts the ShellWindow that provides all actual UI. Each
+// mode owns its own staging (see StagingModel) independently -- there is no
+// app-wide shared staging basket here.
 class MainWindow : public QMainWindow {
     Q_OBJECT
 
 public:
     explicit MainWindow(QWidget* parent = nullptr);
 
-    StagingModel& stagingModel() { return stagingModel_; }
-
 private:
-    StagingModel stagingModel_;
     ShellWindow* shell_;
 };
 

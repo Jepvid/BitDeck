@@ -33,7 +33,6 @@ public:
     QString name() const override { return QStringLiteral("Inspect OTR"); }
     QString openButtonLabel() const override { return QObject::tr("Open OTR/O2R..."); }
     QString primaryActionLabel() const override { return QObject::tr("Extract OTR/O2R"); }
-    bool usesFinalizeFlow() const override { return false; }
     QWidget* treeWidget() override;
     QWidget* contentWidget() override;
     QWidget* statusBarWidget() override;

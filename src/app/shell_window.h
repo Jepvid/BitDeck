@@ -16,13 +16,14 @@ namespace bitdeck {
 
 class MainWindow;
 
-// Owns the shell chrome: top bar (mode selector, Open, Finalize Mod), the
-// tree/content body, and the status-bar strip. Holds one ModeController per
-// mode; switching modes swaps which controller's tree/content/status
+// Owns the shell chrome: top bar (mode selector, Open, per-mode action),
+// the tree/content body, and the status-bar strip. Holds one ModeController
+// per mode; switching modes swaps which controller's tree/content/status
 // widgets are visible via three parallel QStackedWidgets kept in lockstep
 // with the mode QComboBox. An in-progress scan in one mode survives
 // switching to another and back: controllers are constructed once up
-// front, never recreated.
+// front, never recreated. Each mode owns its own staging and its own
+// top-bar action entirely -- there is no cross-mode combined output.
 class ShellWindow : public QWidget {
     Q_OBJECT
 
@@ -34,6 +35,7 @@ private:
     void onOpenClicked();
     void onPrimaryActionClicked();
     void onSettingsClicked();
+    void onInstructionsClicked();
     ModeController& currentController();
 
     MainWindow& window_;
@@ -41,17 +43,13 @@ private:
 
     QComboBox* modeCombo_;
     QPushButton* openButton_;
-    QPushButton* primaryActionButton_; // "Finalize Mod" by default; some modes replace both label and behavior
+    QPushButton* primaryActionButton_; // label/behavior fully owned by the active mode; hidden when its label is empty
+    QPushButton* instructionsButton_;
     QPushButton* settingsButton_;
     QSplitter* bodySplitter_;
     QStackedWidget* treeStack_;
     QStackedWidget* contentStack_;
     QStackedWidget* statusBarStack_;
-
-    // An extra statusBarStack_ page (index == controllers_.size(), appended
-    // after every mode's own page), shown in place of the active mode's
-    // status bar while Finalize Mod's pre-scan runs.
-    int scanningStatusIndex_ = -1;
 };
 
 } // namespace bitdeck
