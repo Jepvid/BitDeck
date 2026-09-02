@@ -37,6 +37,29 @@
 # definition and vote from its body, same single-clean-type discipline as
 # the direct per-symbol scan.
 #
+# A fifth tier handles an array indexed directly at the call site instead of
+# passed into a helper (e.g. "gSPSegment(POLY_XLU_DISP++, 0x08,
+# SEGMENTED_TO_VIRTUAL(sLightningTextures[eff->timer]))" -- the fourth
+# tier's one-hop function-body lookup finds nothing here, since
+# SEGMENTED_TO_VIRTUAL is a macro, not a function with a body to search):
+# votes every member of an array literal with the queue(s) found around the
+# array's own variable name, not just each member's own name.
+#
+# A sixth tier covers a texture whose only draw call lives in a compile-time
+# static Gfx array baked from the ROM's own disassembly rather than built by
+# game logic -- tier 1 can't resolve it either, since this pattern compiles
+# to a plain segmented pointer, never an OTR hash. Scans ZAPD's
+# extracted/**/*.inc.c disassembly (not source C, so outside every other
+# tier's search) for a canned gsDPSetRenderMode(...) macro name textually
+# next to the symbol, resolved against include/ultra64/gbi.h's own FORCE_BL
+# bit rather than a hand-maintained table.
+#
+# Symbol names collide across unrelated files (e.g. "s1Tex"/"s2Tex" reused
+# by many overlays with different meanings, "sTextures" reused by many
+# actors as different arrays) -- every tier above scopes a colliding name's
+# search to its own declaring file/overlay folder instead of matching any
+# same-named symbol anywhere in the decomp.
+#
 # Usage: python3 gen_transparency_map.py <game> <decomp_root> <path-to-archive.o2r> ../src/games
 import glob, os, re, sys, xml.etree.ElementTree as ET, zipfile
 
@@ -45,8 +68,17 @@ SIBLING_GAP_CHARS = 100
 
 
 def collect_i8_textures(xml_root, archive_names):
+    """Returns (symbols, home_folder). symbols maps a lookup key to its
+    archive path -- normally the bare C symbol name (e.g. "gDust1Tex"), but
+    a name reused by multiple different <File> blocks (very common for
+    generic per-overlay statics like "s1Tex"/"s2Tex", each overlay's own
+    unrelated local variable) gets a synthetic "name@file_name" key instead,
+    so the two don't collapse into one lookup entry. home_folder maps every
+    synthetic-keyed symbol to its owning XML <File Name>, letting the
+    source scan restrict its search to that overlay's own source folder
+    instead of matching any file's same-named local by accident."""
     files = glob.glob(f"{xml_root}/**/*.xml", recursive=True)
-    symbols = {}
+    found = []  # (name, file_name, archive_path)
     for f in files:
         category = os.path.relpath(f, xml_root).split(os.sep)[0]
         try:
@@ -65,9 +97,30 @@ def collect_i8_textures(xml_root, archive_names):
                     continue
                 for candidate in (f"{category}/{file_name}/{name}", f"{file_name}/{name}"):
                     if candidate in archive_names:
-                        symbols[name] = candidate
+                        found.append((name, file_name, candidate))
                         break
-    return symbols
+
+    # Some objects have a second "_pal" XML (e.g. object_bv_pal.xml
+    # alongside object_bv.xml) redeclaring the exact same File Name and
+    # Texture Name/path -- not a real collision, just a duplicate
+    # declaration of the same asset. Dedupe before counting so those
+    # don't falsely trigger the disambiguation path below.
+    found = sorted(set(found))
+
+    name_to_paths = {}
+    for name, _file_name, path in found:
+        name_to_paths.setdefault(name, set()).add(path)
+
+    symbols = {}
+    home_folder = {}
+    for name, file_name, path in found:
+        if len(name_to_paths[name]) > 1:
+            key = f"{name}@{file_name}"
+            home_folder[key] = file_name
+        else:
+            key = name
+        symbols[key] = path
+    return symbols, home_folder
 
 
 FORWARD_WINDOW_CHARS = 3000
@@ -103,27 +156,53 @@ def surrounding_queues(text, start, end):
     return set(QUEUE_RE.findall(backward)) | set(QUEUE_RE.findall(forward))
 
 
-def direct_votes(decomp_root, symbols):
+def bare_name(sym):
+    """Strips a synthetic "name@file_name" disambiguation suffix (see
+    collect_i8_textures) back to the real C symbol name to search for."""
+    return sym.split("@", 1)[0]
+
+
+def scoped_c_files(decomp_root, sym, home_folder, all_files, folder_files_cache):
+    """The file list to search for sym's own text occurrences: just its
+    owning overlay's source folder if sym is a disambiguated (collision-
+    prone) symbol, every source file otherwise."""
+    folder = home_folder.get(sym)
+    if folder is None:
+        return all_files
+    if folder not in folder_files_cache:
+        folder_files_cache[folder] = glob.glob(f"{decomp_root}/src/**/{folder}/*.c", recursive=True)
+    return folder_files_cache[folder]
+
+
+def direct_votes(decomp_root, symbols, home_folder):
     """For each symbol, every occurrence across every file casts a "vote"
     for its own local (backward+forward window) queue -- but only if that
     window is itself unambiguous. A giant multi-effect draw function (some
     OOT bosses mix opaque and translucent effects in one function) produces
     a mixed local window at one occurrence; that occurrence casts no vote
     rather than poisoning the symbol's result when other, cleaner
-    occurrences elsewhere agree."""
-    c_files = glob.glob(f"{decomp_root}/src/**/*.c", recursive=True)
+    occurrences elsewhere agree. A disambiguated symbol (home_folder) only
+    searches its own overlay folder, never a same-named local elsewhere."""
+    all_files = glob.glob(f"{decomp_root}/src/**/*.c", recursive=True)
+    folder_files_cache = {}
+    text_cache = {}
     votes = {sym: set() for sym in symbols}
-    for path in c_files:
-        try:
-            with open(path, "r", encoding="utf-8", errors="ignore") as fh:
-                text = fh.read()
-        except OSError:
-            continue
-        for sym in symbols:
-            idx = text.find(sym)
+    for sym in symbols:
+        name = bare_name(sym)
+        for path in scoped_c_files(decomp_root, sym, home_folder, all_files, folder_files_cache):
+            if path not in text_cache:
+                try:
+                    with open(path, "r", encoding="utf-8", errors="ignore") as fh:
+                        text_cache[path] = fh.read()
+                except OSError:
+                    text_cache[path] = None
+            text = text_cache[path]
+            if text is None:
+                continue
+            idx = text.find(name)
             if idx == -1:
                 continue
-            local = surrounding_queues(text, idx, idx + len(sym))
+            local = surrounding_queues(text, idx, idx + len(name))
             if len(local) == 1:
                 votes[sym] |= local
     return votes
@@ -172,6 +251,71 @@ def find_array_variables(decomp_root, symbols):
             if members:
                 array_vars.setdefault(m.group(1), set()).update(members)
     return array_vars
+
+
+def find_scoped_array_variables(decomp_root, symbols):
+    """Like find_array_variables, but keeps each array literal's own
+    declaring file attached instead of merging every same-named array
+    across the whole decomp into one entry -- a generic name like
+    "sTextures" is redeclared with completely different members by many
+    unrelated actor files, and array_name_votes must never let one file's
+    queue-macro usage vote for another file's same-named-but-unrelated
+    array. Returns a list of (file_path, file_text, array_name, members)."""
+    c_files = glob.glob(f"{decomp_root}/src/**/*.c", recursive=True)
+    found = []
+    for path in c_files:
+        try:
+            with open(path, "r", encoding="utf-8", errors="ignore") as fh:
+                text = fh.read()
+        except OSError:
+            continue
+        for m in ARRAY_DECL_RE.finditer(text):
+            close = text.find("};", m.end())
+            if close == -1:
+                continue
+            body = text[m.end():close]
+            members = [tok.strip() for tok in body.split(",")]
+            members = [tok for tok in members if tok in symbols]
+            if members:
+                found.append((path, text, m.group(1), members))
+    return found
+
+
+ARRAY_NAME_WINDOW_CHARS = 300
+
+
+def array_name_votes(scoped_arrays):
+    """Votes every array literal's members with the queue(s) found within a
+    small fixed window around the array's own variable name -- covers a
+    draw call that indexes the array directly at the call site (e.g.
+    "gSPSegment(POLY_XLU_DISP++, 0x08, SEGMENTED_TO_VIRTUAL(
+    sLightningTextures[eff->timer]))") rather than passing it into a named
+    helper function (see call_argument_votes, which only votes from a
+    called function's own body and misses this pattern since
+    SEGMENTED_TO_VIRTUAL is a macro, not a function with a body to
+    search). A small window, not surrounding_queues' whole-enclosing-
+    function scan, since the array name's own declaration and its one
+    indexed use both sit inside the same large multi-effect draw function
+    here -- a function-wide scan would see every other effect type's own
+    (possibly different) queue in the same function and call the symbol
+    ambiguous, when the actual queue macro is one line away from the
+    array name at the real use site."""
+    votes = {}
+    for path, text, array_name, members in scoped_arrays:
+        for sym in members:
+            votes.setdefault(sym, set())
+        pos = 0
+        while True:
+            idx = text.find(array_name, pos)
+            if idx == -1:
+                break
+            pos = idx + len(array_name)
+            window = text[max(0, idx - ARRAY_NAME_WINDOW_CHARS):idx + ARRAY_NAME_WINDOW_CHARS]
+            local = set(QUEUE_RE.findall(window))
+            if len(local) == 1:
+                for sym in members:
+                    votes[sym] |= local
+    return votes
 
 
 def build_function_index(decomp_root):
@@ -245,6 +389,109 @@ def call_argument_votes(decomp_root, symbols, array_vars, functions):
     return votes
 
 
+RM_BASE_MACRO_RE = re.compile(r"#define\s+(RM_\w+)\(clk\)\s*\\\n((?:.*\\\n)*.*)", re.MULTILINE)
+G_RM_ALIAS_RE = re.compile(r"#define\s+(G_RM_\w+)\s+(RM_\w+)\(\d+\)")
+RENDER_MODE_CALL_RE = re.compile(r"gsDPSetRenderMode\s*\(([^)]*)\)")
+CANNED_MODE_NAME_RE = re.compile(r"\bG_RM_\w+\b")
+INC_C_WINDOW_CHARS = 1500
+
+
+def find_gbi_h(decomp_root):
+    """Locates gbi.h -- its path within a decomp varies (OOT keeps it at
+    include/ultra64/gbi.h, MM at include/PR/gbi.h); tries known
+    conventions first, then falls back to a recursive search rather than
+    hardcoding one decomp's layout."""
+    for candidate in ("include/ultra64/gbi.h", "include/PR/gbi.h"):
+        path = os.path.join(decomp_root, candidate)
+        if os.path.isfile(path):
+            return path
+    matches = glob.glob(f"{decomp_root}/include/**/gbi.h", recursive=True)
+    if matches:
+        return matches[0]
+    raise FileNotFoundError(f"gbi.h not found under {decomp_root}/include")
+
+
+def parse_render_mode_macros(decomp_root):
+    """Parses gbi.h's canned RM_<BASE>(clk) render-mode macro bodies for
+    the FORCE_BL flag (every translucent N64 render mode sets it, every
+    opaque one leaves it clear -- same authoritative bit
+    scanDisplayListForTransparencyInfo checks in the compiled binary), and
+    each G_RM_<NAME> alias's own base macro, so a canned mode name as it
+    appears in ZAPD's disassembled DL text (e.g. "G_RM_ZB_CLD_SURF2") can
+    be resolved to translucent/opaque without hand-maintaining that table."""
+    with open(find_gbi_h(decomp_root), "r", encoding="utf-8", errors="ignore") as fh:
+        text = fh.read()
+    rm_force_bl = {m.group(1): ("FORCE_BL" in m.group(2)) for m in RM_BASE_MACRO_RE.finditer(text)}
+    g_rm_to_base = {m.group(1): m.group(2) for m in G_RM_ALIAS_RE.finditer(text)}
+    return rm_force_bl, g_rm_to_base
+
+
+def inc_c_render_mode_votes(decomp_root, symbols, home_folder):
+    """Source-level fallback for a texture whose only draw call lives in a
+    compile-time static Gfx array baked from the ROM's own disassembly
+    (e.g. "static Gfx sMaterialDL[22] = { #include
+    "assets/overlays/ovl_Arrow_Fire/sMaterialDL.inc.c" };"): these use a
+    canned render-mode macro name textually next to the texture's own
+    symbol name inside ZAPD's extracted/ disassembly -- files direct_votes
+    never sees, since it only scans src/**/*.c -- and often a plain
+    (non-OTR-hash-patched) SETTIMG scanDisplayListForTransparencyInfo
+    can't resolve either, since a compile-time-local static array's own
+    texture load compiles to a raw segmented pointer, never an OTR hash.
+    Globs *.c (not *.inc.c) since this disassembly's own layout varies by
+    decomp: OOT splits one .inc.c per symbol, MM bundles a whole
+    overlay's disassembly into one plain .c file -- "*.c" matches both,
+    since fnmatch treats "*.inc.c" as ending in ".c" too. Resolves each
+    canned name via parse_render_mode_macros, then votes with a synthetic
+    POLY_XLU_DISP/POLY_OPA_DISP so it flows through the same
+    classify_from_votes/sibling-group machinery as every other tier. A
+    disambiguated symbol (home_folder) only searches its own overlay's
+    extracted folder, never a same-named local elsewhere."""
+    rm_force_bl, g_rm_to_base = parse_render_mode_macros(decomp_root)
+
+    def canned_force_bl(name):
+        base = g_rm_to_base.get(name)
+        return rm_force_bl.get(base) if base else None
+
+    all_files = glob.glob(f"{decomp_root}/extracted/**/*.c", recursive=True)
+    folder_files_cache = {}
+    text_cache = {}
+    votes = {sym: set() for sym in symbols}
+    for sym in symbols:
+        name = bare_name(sym)
+        folder = home_folder.get(sym)
+        if folder is None:
+            files = all_files
+        else:
+            if folder not in folder_files_cache:
+                folder_files_cache[folder] = glob.glob(f"{decomp_root}/extracted/**/{folder}/*.c", recursive=True)
+            files = folder_files_cache[folder]
+        for path in files:
+            if path not in text_cache:
+                try:
+                    with open(path, "r", encoding="utf-8", errors="ignore") as fh:
+                        text_cache[path] = fh.read()
+                except OSError:
+                    text_cache[path] = None
+            text = text_cache[path]
+            if text is None:
+                continue
+            idx = text.find(name)
+            if idx == -1:
+                continue
+            window = text[max(0, idx - INC_C_WINDOW_CHARS):idx + INC_C_WINDOW_CHARS]
+            local = set()
+            for call_args in RENDER_MODE_CALL_RE.findall(window):
+                for canned in CANNED_MODE_NAME_RE.findall(call_args):
+                    fbl = canned_force_bl(canned)
+                    if fbl is True:
+                        local.add("POLY_XLU_DISP")
+                    elif fbl is False:
+                        local.add("POLY_OPA_DISP")
+            if len(local) == 1:
+                votes[sym] |= local
+    return votes
+
+
 class UnionFind:
     def __init__(self, items):
         self.parent = {item: item for item in items}
@@ -261,16 +508,10 @@ class UnionFind:
             self.parent[ra] = rb
 
 
-def find_sibling_groups(decomp_root, symbols):
-    """Groups symbols that co-occur within SIBLING_GAP_CHARS of each other
-    anywhere in source -- catches array-literal/ternary sibling sets (see
-    module docstring) without needing to understand C syntax."""
-    c_files = glob.glob(f"{decomp_root}/src/**/*.c", recursive=True)
-    names_by_len = sorted(symbols, key=len, reverse=True)
+def _union_cooccurring(uf, bare_to_sym, files):
+    names_by_len = sorted(bare_to_sym, key=len, reverse=True)
     combined_re = re.compile(r"\b(?:" + "|".join(re.escape(n) for n in names_by_len) + r")\b")
-
-    uf = UnionFind(symbols)
-    for path in c_files:
+    for path in files:
         try:
             with open(path, "r", encoding="utf-8", errors="ignore") as fh:
                 text = fh.read()
@@ -279,7 +520,29 @@ def find_sibling_groups(decomp_root, symbols):
         matches = list(combined_re.finditer(text))
         for prev, cur in zip(matches, matches[1:]):
             if cur.start() - prev.end() <= SIBLING_GAP_CHARS:
-                uf.union(prev.group(), cur.group())
+                uf.union(bare_to_sym[prev.group()], bare_to_sym[cur.group()])
+
+
+def find_sibling_groups(decomp_root, symbols, home_folder):
+    """Groups symbols that co-occur within SIBLING_GAP_CHARS of each other
+    in source -- catches array-literal/ternary sibling sets (see module
+    docstring) without needing to understand C syntax. A disambiguated
+    symbol (home_folder) only looks for co-occurrence within its own
+    overlay folder, alongside that overlay's own other symbols."""
+    all_files = glob.glob(f"{decomp_root}/src/**/*.c", recursive=True)
+    uf = UnionFind(symbols)
+
+    global_syms = [s for s in symbols if s not in home_folder]
+    if global_syms:
+        _union_cooccurring(uf, {bare_name(s): s for s in global_syms}, all_files)
+
+    folder_to_syms = {}
+    for sym, folder in home_folder.items():
+        folder_to_syms.setdefault(folder, []).append(sym)
+    folder_files_cache = {}
+    for folder, syms in folder_to_syms.items():
+        files = scoped_c_files(decomp_root, syms[0], home_folder, all_files, folder_files_cache)
+        _union_cooccurring(uf, {bare_name(s): s for s in syms}, files)
 
     groups = {}
     for sym in symbols:
@@ -388,23 +651,31 @@ if __name__ == "__main__":
     z = zipfile.ZipFile(archive)
     archive_names = set(z.namelist())
 
-    symbols = collect_i8_textures(f"{decomp_root}/assets/xml", archive_names)
-    print(f"{len(symbols)} I8 textures found in XML and present in archive")
+    symbols, home_folder = collect_i8_textures(f"{decomp_root}/assets/xml", archive_names)
+    print(f"{len(symbols)} I8 textures found in XML and present in archive "
+          f"({len(home_folder)} disambiguated, name reused by another overlay)")
 
     array_vars = find_array_variables(decomp_root, symbols)
     functions = build_function_index(decomp_root)
 
-    votes = direct_votes(decomp_root, symbols)
+    votes = direct_votes(decomp_root, symbols, home_folder)
     call_votes = call_argument_votes(decomp_root, symbols, array_vars, functions)
     for sym, qs in call_votes.items():
         votes[sym] |= qs
 
+    scoped_arrays = find_scoped_array_variables(decomp_root, symbols)
+    for sym, qs in array_name_votes(scoped_arrays).items():
+        votes[sym] |= qs
+
+    for sym, qs in inc_c_render_mode_votes(decomp_root, symbols, home_folder).items():
+        votes[sym] |= qs
+
     classified, ambiguous = classify_from_votes(votes)
     direct_translucent = sum(1 for m in classified.values() if m == "POLY_XLU_DISP")
-    print(f"direct+call-argument: {direct_translucent} translucent, "
+    print(f"direct+call-argument+array-name+inc.c: {direct_translucent} translucent, "
           f"{len(classified) - direct_translucent} opaque, {len(ambiguous)} ambiguous/mixed")
 
-    groups = find_sibling_groups(decomp_root, symbols)
+    groups = find_sibling_groups(decomp_root, symbols, home_folder)
     propagate_sibling_groups(classified, ambiguous, groups)
     total_translucent = sum(1 for m in classified.values() if m == "POLY_XLU_DISP")
     print(f"after sibling-group propagation ({len(groups)} groups found): "
