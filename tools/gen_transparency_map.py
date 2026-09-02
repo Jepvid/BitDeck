@@ -622,12 +622,15 @@ MANUAL_TRANSLUCENT_I8 = {
     },
 }
 
-# Deliberate overrides: the real game draws these with mixed render modes
-# across different callers (confirmed, not a scanner gap) -- no single
-# accurate answer exists. Each entry is an explicit call favoring editing
-# convenience for texture pack makers over one of the in-game contexts.
-# Kept separate from MANUAL_TRANSLUCENT_I8 above, which is unambiguous
-# ground truth; these are judgment calls.
+# Deliberate overrides: no tier above resolves these to a single accurate
+# answer -- either the real game draws them with genuinely mixed render
+# modes across different callers (confirmed, not a scanner gap), or no
+# render mode could be confirmed for them at all (no baked display list or
+# source reference of any kind found, so classified from context instead
+# of evidence). Each entry is an explicit call favoring editing convenience
+# for texture pack makers over strict "not proven" caution. Kept separate
+# from MANUAL_TRANSLUCENT_I8 above, which is unambiguous ground truth;
+# these are judgment calls, and each entry documents which kind.
 DELIBERATE_OVERRIDE_TRANSLUCENT_I8 = {
     "oot": {
         # z_eff_ss_bubble.c (POLY_OPA_DISP) and z_eff_ss_sibuki.c
@@ -638,6 +641,16 @@ DELIBERATE_OVERRIDE_TRANSLUCENT_I8 = {
         # makers expect from a "bubble" texture.
         "objects/gameplay_keep/gEffBubble1Tex",
         "objects/gameplay_keep/gEffBubble2Tex",
+        # Unmatched ZAPD placeholder (the OOT decomp hasn't given it a real
+        # symbol name yet) -- not referenced by any display list in the
+        # archive (hash-patched or raw-pointer form) and not referenced by
+        # name in source (it has no name to search for), so no tier above
+        # can resolve it from evidence. A bright starburst/glow image,
+        # visually and positionally matching the other 14 unmatched I8
+        # textures in this same overlay, all 14 of which the live scanner
+        # independently confirms translucent via their own baked display
+        # lists. User's call: treat as translucent on that basis.
+        "overlays/ovl_Boss_Ganon/ovl_Boss_GanonTex_010538",
     },
 }
 

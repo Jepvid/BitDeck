@@ -155,6 +155,7 @@ const char* const kOotTranslucentI8Textures[] = {
     "overlays/ovl_Boss_Ganon/gGanondorfLightning7Tex",
     "overlays/ovl_Boss_Ganon/gGanondorfLightning8Tex",
     "overlays/ovl_Boss_Ganon/gGanondorfLightning9Tex",
+    "overlays/ovl_Boss_Ganon/ovl_Boss_GanonTex_010538",
     "overlays/ovl_Boss_Ganon2/gGanonFireRingTex",
     "overlays/ovl_Boss_Ganon2/gGanonLightOrbTex",
     "overlays/ovl_Boss_Ganon2/gGanonMasterSwordShadowTex",
